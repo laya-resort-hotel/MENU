@@ -351,6 +351,18 @@
     return label.split(/\s+/).slice(0,2).map(s=>s[0]||'').join('').toUpperCase();
   }
 
+  function getImageUrl(item) {
+    return `assets/menu/${item.id}.png`;
+  }
+
+  function menuThumb(item, lang, extraClass = '', large = false) {
+    const cls = ['menu-thumb', 'has-image', extraClass].filter(Boolean).join(' ');
+    return `<div class="${cls}">
+      <img src="${escapeHtml(getImageUrl(item))}" alt="${escapeHtml(getName(item, lang))}" loading="lazy" />
+      <span class="fallback-label">${escapeHtml(item.imageLabel || initials(getName(item, lang)))}</span>
+    </div>`;
+  }
+
   function renderLangSwitch(el, selected, onChange) {
     if (!el) return;
     el.innerHTML = LANGS.map(lang => `<button class="chip ${lang.code===selected?'active':''}" data-lang="${lang.code}">${lang.label}</button>`).join('');
@@ -374,7 +386,7 @@
     const qty = options.qty || 0;
     return `
       <article class="menu-card card">
-        <div class="menu-thumb"><span>${escapeHtml(item.imageLabel || initials(getName(item, lang)))}</span></div>
+        ${menuThumb(item, lang)}
         <div class="menu-meta">
           <h3>${escapeHtml(getName(item, lang))}</h3>
           <p>${escapeHtml(desc)}</p>
@@ -414,7 +426,7 @@
   function itemDetailModal(item, lang) {
     return `
       <div class="modal-card">
-        <div class="menu-thumb" style="height:240px;margin-bottom:16px;"><span>${escapeHtml(item.imageLabel || initials(getName(item, lang)))}</span></div>
+        ${menuThumb(item, lang, 'detail-thumb')}
         <h2>${escapeHtml(getName(item, lang))}</h2>
         <p>${escapeHtml(getDesc(item, lang))}</p>
         <div class="status-row" style="margin-top:14px;">${(item.tags||[]).map(tag=>`<span class="tag">${escapeHtml(tag)}</span>`).join('')}</div>
