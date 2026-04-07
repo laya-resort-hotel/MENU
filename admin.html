@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin CMS</title>
+  <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body data-page="admin">
+  <div class="shell page-shell admin-shell">
+    <header class="topbar">
+      <a href="index.html" class="brand-block">
+        <span class="brand-kicker">THE TASTE</span>
+        <strong>Admin CMS</strong>
+      </a>
+      <div class="topbar-actions">
+        <button class="btn small" id="resetDemoBtn">Reset Demo Data</button>
+        <button class="btn small secondary" id="adminLogoutBtn">Logout</button>
+      </div>
+    </header>
+
+    <section id="adminApp" class="hidden">
+      <div class="toolbar admin-toolbar">
+        <input id="adminSearch" class="search-input" type="text" placeholder="Search item..." />
+        <select id="adminCategoryFilter" class="select-input"></select>
+        <select id="adminStatusFilter" class="select-input">
+          <option value="all">All Status</option>
+          <option value="active">Active</option>
+          <option value="hidden">Hidden</option>
+          <option value="soldout">Sold Out</option>
+        </select>
+        <button class="btn primary" id="addItemBtn">Add New Item</button>
+      </div>
+
+      <div id="adminList" class="admin-list"></div>
+    </section>
+  </div>
+
+  <div id="adminLoginModal" class="modal hidden"></div>
+  <div id="adminEditorModal" class="modal hidden"></div>
+  <script src="assets/app.js"></script>
+</body>
+</html>

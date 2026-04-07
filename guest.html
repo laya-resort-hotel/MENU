@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Guest Menu</title>
+  <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body data-page="guest">
+  <div class="shell page-shell">
+    <header class="topbar guest-topbar">
+      <a href="index.html" class="brand-block">
+        <span class="brand-kicker">THE TASTE</span>
+        <strong>Digital Menu</strong>
+      </a>
+      <div class="topbar-actions">
+        <div class="lang-switch" id="guestLanguageSwitch"></div>
+        <button class="btn small secondary" id="callStaffBtn">Call Staff</button>
+      </div>
+    </header>
+
+    <section class="section-intro">
+      <h1>Menu</h1>
+      <p>เลือกภาษาได้เอง และเลื่อนดูเมนูตามหมวด</p>
+    </section>
+
+    <section class="toolbar">
+      <div id="guestCategoryTabs" class="category-tabs"></div>
+      <input id="guestSearch" class="search-input" type="text" placeholder="Search menu..." />
+    </section>
+
+    <section>
+      <div id="guestMenuGrid" class="menu-grid"></div>
+    </section>
+  </div>
+
+  <div id="menuModal" class="modal hidden"></div>
+
+  <script src="assets/app.js"></script>
+</body>
+</html>

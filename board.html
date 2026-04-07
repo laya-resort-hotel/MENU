@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Order Board</title>
+  <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body data-page="board">
+  <div class="shell page-shell board-shell">
+    <header class="topbar">
+      <a href="index.html" class="brand-block">
+        <span class="brand-kicker">THE TASTE</span>
+        <strong>Order Board</strong>
+      </a>
+      <div class="topbar-actions">
+        <div class="board-stats" id="boardStats"></div>
+        <button class="btn small" id="enableSoundBtn">Enable Sound</button>
+        <button class="btn small secondary" id="boardLogoutBtn">Logout</button>
+      </div>
+    </header>
+
+    <section id="boardApp" class="hidden board-columns">
+      <div class="board-column">
+        <div class="column-head new">New Orders</div>
+        <div id="newOrders" class="board-list"></div>
+      </div>
+      <div class="board-column">
+        <div class="column-head ack">Acknowledged</div>
+        <div id="ackOrders" class="board-list"></div>
+      </div>
+      <div class="board-column">
+        <div class="column-head done">Keyed / Closed</div>
+        <div id="doneOrders" class="board-list"></div>
+      </div>
+    </section>
+  </div>
+
+  <div id="boardLoginModal" class="modal hidden"></div>
+  <div id="orderViewModal" class="modal hidden"></div>
+  <script src="assets/app.js"></script>
+</body>
+</html>
