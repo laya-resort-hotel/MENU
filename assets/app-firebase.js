@@ -59,6 +59,70 @@ let boardAlarmRunning = false;
 let boardAlarmAudio = null;
 let boardAlarmFallbackLastAt = 0;
 
+
+function ensureBoardAlarmAudio() {
+  try {
+    if (!boardAlarmAudio) {
+      boardAlarmAudio = new Audio('./assets/board-alarm.mp3?v=3');
+      boardAlarmAudio.preload = 'auto';
+      boardAlarmAudio.loop = true;
+      boardAlarmAudio.volume = 1.0;
+      boardAlarmAudio.playsInline = true;
+      boardAlarmAudio.crossOrigin = 'anonymous';
+    }
+    return boardAlarmAudio;
+  } catch (err) {
+    console.warn('create board alarm audio failed', err);
+    return null;
+  }
+}
+
+function playFallbackBeep() {
+  const now = Date.now();
+  if (now - boardAlarmFallbackLastAt < 900) return;
+  boardAlarmFallbackLastAt = now;
+  beep(3);
+}
+
+async function unlockBoardAlarmAudio() {
+  const audio = ensureBoardAlarmAudio();
+  if (!audio) return false;
+  try {
+    audio.volume = 1.0;
+    audio.muted = true;
+    const playPromise = audio.play();
+    if (playPromise && typeof playPromise.then === 'function') {
+      await playPromise;
+    }
+    audio.pause();
+    audio.currentTime = 0;
+    audio.muted = false;
+    return true;
+  } catch (err) {
+    try {
+      audio.pause();
+      audio.currentTime = 0;
+      audio.muted = false;
+    } catch (_) {}
+    console.warn('unlock board alarm failed', err);
+    return false;
+  }
+}
+
+function armBoardAlarmOnInteraction() {
+  if (PAGE !== 'board') return;
+  const once = async () => {
+    document.removeEventListener('click', once, true);
+    document.removeEventListener('touchstart', once, true);
+    document.removeEventListener('keydown', once, true);
+    await unlockBoardAlarmAudio();
+    syncBoardAlarmLoop();
+  };
+  document.addEventListener('click', once, true);
+  document.addEventListener('touchstart', once, true);
+  document.addEventListener('keydown', once, true);
+}
+
 const EMPLOYEE_EMAIL_DOMAIN = `employee.${(firebaseConfig?.projectId || 'menu').toLowerCase()}.local`;
 function normalizeEmployeeId(input='') {
   return String(input).trim().replace(/\s+/g, '').toUpperCase();
@@ -517,9 +581,13 @@ function startBoardAlarmLoop() {
     const audio = ensureBoardAlarmAudio();
     if (audio) {
       try {
+        audio.loop = true;
         audio.volume = 1.0;
-        if (audio.paused) {
-          await audio.play();
+        if (audio.paused || audio.ended) {
+          const playPromise = audio.play();
+          if (playPromise && typeof playPromise.then === 'function') {
+            await playPromise;
+          }
         }
       } catch (err) {
         console.warn('alarm play failed', err);
@@ -531,7 +599,7 @@ function startBoardAlarmLoop() {
   };
 
   tick();
-  boardAlarmTimer = setInterval(tick, 1500);
+  boardAlarmTimer = setInterval(tick, 1200);
 }
 
 function syncBoardAlarmLoop() {
@@ -1036,6 +1104,7 @@ async function startPageForUser() {
       return;
     }
     qs('boardApp').classList.remove('hidden');
+    armBoardAlarmOnInteraction();
     qs('enableSoundBtn').textContent = state.soundEnabled ? 'Mute Alarm' : 'Enable Alarm';
     qs('enableSoundBtn').onclick = async () => {
       state.soundEnabled = !state.soundEnabled;
