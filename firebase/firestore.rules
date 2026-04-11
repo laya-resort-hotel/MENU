@@ -61,11 +61,21 @@ service cloud.firestore {
       allow create: if
         (signedIn() &&
          request.auth.uid == uid &&
-         !bootstrapDone() &&
-         request.resource.data.role == 'admin')
+         request.resource.data.uid == uid &&
+         request.resource.data.active == true &&
+         (
+           (!bootstrapDone() && request.resource.data.role in ['staff', 'admin']) ||
+           (bootstrapDone() && request.resource.data.role == 'staff')
+         ))
         || isAdminLike();
 
-      allow update, delete: if isAdminLike();
+      allow update: if isAdminLike() ||
+        (signedIn() &&
+         request.auth.uid == uid &&
+         !bootstrapDone() &&
+         request.resource.data.role == 'admin');
+
+      allow delete: if isAdminLike();
     }
 
     match /app_settings/{docId} {

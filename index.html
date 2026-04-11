@@ -3,18 +3,20 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>The Taste Digital Menu Suite</title>
+  <title>The Taste Digital Menu Suite — Firebase</title>
   <link rel="stylesheet" href="assets/styles.css" />
 </head>
 <body data-page="home">
   <div class="shell home-shell">
     <header class="hero">
-      <div class="hero-badge">GITHUB READY</div>
+      <div class="hero-badge">FIREBASE REAL-TIME READY</div>
       <h1>THE TASTE<br><span>Digital Menu Suite</span></h1>
-      <p>เว็บแอปเมนู 3 ภาษา + หน้าพนักงาน + บอร์ด Hostess/Cashier + หน้า Admin พร้อมอัปขึ้น GitHub Pages ได้ทันที</p>
+      <p>เว็บแอปเมนู 3 ภาษา + หน้าพนักงาน + บอร์ด Hostess/Cashier + หน้า Admin แบบเชื่อม Firebase จริง และอัปขึ้น GitHub Pages ได้เลย</p>
       <div class="hero-actions">
         <a class="btn primary" href="guest.html">เปิดเมนูลูกค้า</a>
         <a class="btn" href="staff.html">หน้าพนักงาน</a>
+        <a class="btn" href="board.html">Order Board</a>
+        <a class="btn" href="admin.html">Admin CMS</a>
       </div>
     </header>
 
@@ -26,39 +28,37 @@
       </a>
       <a class="portal-card" href="staff.html">
         <h2>Staff Order</h2>
-        <p>พนักงานเลือกเมนู ใส่ seat / room / guests / comment แล้วส่งขึ้นบอร์ด</p>
+        <p>พนักงานล็อกอินด้วย Firebase Auth แล้วเลือกเมนู ส่ง order ขึ้นบอร์ดจริง</p>
         <span>Open</span>
       </a>
       <a class="portal-card" href="board.html">
         <h2>Order Board</h2>
-        <p>บอร์ดรับออเดอร์แบบ real-time ในโหมด Local Demo พร้อมเสียงแจ้งเตือน</p>
+        <p>Hostess / Cashier เห็น order real-time จาก Firestore พร้อมเสียงแจ้งเตือน</p>
         <span>Open</span>
       </a>
       <a class="portal-card" href="admin.html">
         <h2>Admin CMS</h2>
-        <p>แก้ชื่อ 3 ภาษา ราคา สถานะขาย และเพิ่มเมนูใหม่ได้จากหน้าเว็บ</p>
+        <p>Seed เมนูเริ่มต้น แก้ชื่อ 3 ภาษา ราคา สถานะขาย และจัดการ role / user profile ได้</p>
         <span>Open</span>
       </a>
     </section>
 
     <section class="info-grid">
       <div class="info-card">
-        <h3>โหมดที่พร้อมใช้งานทันที</h3>
-        <p>โปรเจกต์นี้ทำงานได้ทันทีบน GitHub Pages แบบไม่ต้อง build และไม่ต้องใช้ VS Code โดยใช้ Local Demo Storage ในเบราว์เซอร์</p>
+        <h3>โหมดระบบ</h3>
+        <p id="firebaseModeText">Checking...</p>
       </div>
       <div class="info-card">
-        <h3>Demo Login</h3>
-        <p><strong>Staff</strong> staff / staff123<br>
-        <strong>Hostess</strong> hostess / hostess123<br>
-        <strong>Admin</strong> admin / admin123</p>
+        <h3>ครั้งแรกที่ต้องทำ</h3>
+        <p>1) วาง Firebase config<br>2) เปิด Email/Password Auth<br>3) เปิด Firestore<br>4) ล็อกอิน admin.html แล้ว bootstrap admin คนแรก</p>
       </div>
       <div class="info-card">
-        <h3>อัปเกรดภายหลังได้</h3>
-        <p>ถ้าต้องการใช้งานหลายเครื่องพร้อมกันจริง ค่อยต่อ Firebase ภายหลังได้ โดยคงหน้าเว็บชุดนี้ไว้ได้เลย</p>
+        <h3>พร้อมอัป GitHub Pages</h3>
+        <p>ไม่ต้อง build และไม่ต้องใช้ VS Code ก็อัปโฟลเดอร์ขึ้น GitHub Pages ได้เลย</p>
       </div>
     </section>
   </div>
 
-  <script src="assets/app.js"></script>
+  <script type="module" src="assets/app-firebase.js"></script>
 </body>
 </html>
