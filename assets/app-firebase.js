@@ -42,7 +42,7 @@ const state = {
   currentUser: null,
   currentProfile: null,
   boardOrders: [],
-  soundEnabled: localStorage.getItem('taste_board_sound') === 'on',
+  soundEnabled: localStorage.getItem('taste_board_sound') !== 'off',
   lastPendingKey: '',
   userDrafts: [],
   menuSource: 'firestore',
@@ -54,6 +54,8 @@ let auth = null;
 let db = null;
 let menuUnsub = null;
 let boardUnsub = null;
+let boardAlarmTimer = null;
+let boardAlarmRunning = false;
 
 const EMPLOYEE_EMAIL_DOMAIN = `employee.${(firebaseConfig?.projectId || 'menu').toLowerCase()}.local`;
 function normalizeEmployeeId(input='') {
@@ -467,18 +469,52 @@ function beep(times = 2) {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = 'sine';
-      osc.frequency.value = 880;
-      gain.gain.setValueAtTime(0.0001, now + i * 0.35);
-      gain.gain.exponentialRampToValueAtTime(0.12, now + i * 0.35 + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + i * 0.35 + 0.22);
+      osc.frequency.value = i % 2 === 0 ? 880 : 740;
+      gain.gain.setValueAtTime(0.0001, now + i * 0.38);
+      gain.gain.exponentialRampToValueAtTime(0.16, now + i * 0.38 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + i * 0.38 + 0.26);
       osc.connect(gain);
       gain.connect(ctx.destination);
-      osc.start(now + i * 0.35);
-      osc.stop(now + i * 0.35 + 0.25);
+      osc.start(now + i * 0.38);
+      osc.stop(now + i * 0.38 + 0.30);
     }
+    setTimeout(() => {
+      try { ctx.close(); } catch (_) {}
+    }, Math.max(1200, times * 420));
   } catch (err) {
     console.warn('beep failed', err);
   }
+}
+
+function stopBoardAlarmLoop() {
+  if (boardAlarmTimer) {
+    clearTimeout(boardAlarmTimer);
+    boardAlarmTimer = null;
+  }
+  boardAlarmRunning = false;
+}
+
+function startBoardAlarmLoop() {
+  if (boardAlarmRunning || !state.soundEnabled) return;
+  boardAlarmRunning = true;
+
+  const tick = () => {
+    const hasPendingAlarm = PAGE === 'board' && state.boardOrders.some(o => o.status === 'sent' && o.soundAlertActive !== false);
+    if (!state.soundEnabled || !hasPendingAlarm) {
+      stopBoardAlarmLoop();
+      return;
+    }
+    beep(3);
+    boardAlarmTimer = setTimeout(tick, 1800);
+  };
+
+  tick();
+}
+
+function syncBoardAlarmLoop() {
+  const hasPendingAlarm = PAGE === 'board' && state.boardOrders.some(o => o.status === 'sent' && o.soundAlertActive !== false);
+  if (state.soundEnabled && hasPendingAlarm) startBoardAlarmLoop();
+  else stopBoardAlarmLoop();
 }
 async function updateOrderStatus(orderId, patch) {
   try {
@@ -553,11 +589,9 @@ function renderBoard() {
     closedAt: serverTimestamp()
   })));
 
-  const pendingKey = newOrders.map(o => o.id).join('|');
-  if (state.soundEnabled && pendingKey && pendingKey !== state.lastPendingKey) {
-    beep(2);
-  }
+  const pendingKey = newOrders.filter(o => o.soundAlertActive !== false).map(o => o.id).join('|');
   state.lastPendingKey = pendingKey;
+  syncBoardAlarmLoop();
 }
 function openOrderView(orderId) {
   const order = state.boardOrders.find(x => x.id === orderId);
@@ -789,7 +823,7 @@ function wireCommonAuthButtons() {
   const logoutIds = ['staffLogoutBtn', 'boardLogoutBtn', 'adminLogoutBtn'];
   logoutIds.forEach(id => {
     const el = qs(id);
-    if (el) el.onclick = async () => { await signOut(auth); window.location.reload(); };
+    if (el) el.onclick = async () => { stopBoardAlarmLoop(); await signOut(auth); window.location.reload(); };
   });
 }
 function useSeedMenuFallback(reason='') {
@@ -979,12 +1013,17 @@ async function startPageForUser() {
       return;
     }
     qs('boardApp').classList.remove('hidden');
-    qs('enableSoundBtn').textContent = state.soundEnabled ? 'Sound: ON' : 'Enable Sound';
+    qs('enableSoundBtn').textContent = state.soundEnabled ? 'Mute Alarm' : 'Enable Alarm';
     qs('enableSoundBtn').onclick = () => {
       state.soundEnabled = !state.soundEnabled;
       localStorage.setItem('taste_board_sound', state.soundEnabled ? 'on' : 'off');
-      qs('enableSoundBtn').textContent = state.soundEnabled ? 'Sound: ON' : 'Enable Sound';
-      if (state.soundEnabled) beep(1);
+      qs('enableSoundBtn').textContent = state.soundEnabled ? 'Mute Alarm' : 'Enable Alarm';
+      if (state.soundEnabled) {
+        beep(1);
+        syncBoardAlarmLoop();
+      } else {
+        stopBoardAlarmLoop();
+      }
     };
     if (boardUnsub) boardUnsub();
     boardUnsub = onSnapshot(query(collection(db, 'orders'), orderBy('createdAt', 'desc'), limit(80)), snap => {
