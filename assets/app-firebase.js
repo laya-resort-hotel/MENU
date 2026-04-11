@@ -345,9 +345,7 @@ function renderGuest() {
   const grid = qs('guestMenuGrid');
   if (!grid) return;
   const items = filteredItems();
-  const fallbackNotice = state.menuSource === 'seed'
-    ? `<div class="notice fallback-menu-notice"><strong>Fallback menu mode</strong><br>${escapeHtml(state.menuNotice || 'Showing built-in menu data.')}</div>`
-    : '';
+  const fallbackNotice = '';
   const itemsHtml = items.length ? items.map(item => menuCard(item)).join('') : `<div class="empty-state">No menu items</div>`;
   grid.innerHTML = `${fallbackNotice}${itemsHtml}`;
   attachMenuActions(grid);
@@ -399,9 +397,7 @@ function renderStaff() {
   }
   const grid = qs('staffMenuGrid');
   const items = filteredItems();
-  const fallbackNotice = state.menuSource === 'seed'
-    ? `<div class="notice fallback-menu-notice"><strong>Fallback menu mode</strong><br>${escapeHtml(state.menuNotice || 'Showing built-in menu data.')}</div>`
-    : '';
+  const fallbackNotice = '';
   const itemsHtml = items.length ? items.map(item => menuCard(item, { staff:true })).join('') : `<div class="empty-state">No menu items</div>`;
   grid.innerHTML = `${fallbackNotice}${itemsHtml}`;
   attachMenuActions(grid);
