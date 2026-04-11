@@ -83,3 +83,9 @@ export const firebaseConfig = {
 2. สร้าง **Firestore Database** แบบ Native mode
 3. นำไฟล์ `firebase/firestore.rules` ไปวางใน Firestore Rules แล้วกด Publish
 4. เปิด `admin.html` แล้วสมัครบัญชีแรกด้วย Employee ID จากหน้า Register จากนั้นกด Make This Account Admin
+
+
+## ถ้าเมนูยังไม่ขึ้น
+
+- เวอร์ชันนี้จะ fallback ไปใช้เมนูสำรองในไฟล์เว็บอัตโนมัติ ถ้า Firestore ยังไม่มี `menu_categories` และ `menu_items`
+- ถ้าต้องการให้ดึงจาก Firebase จริง ให้เข้า `admin.html` แล้วกด **Seed Firestore Menu**
