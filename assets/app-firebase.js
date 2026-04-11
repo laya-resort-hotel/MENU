@@ -162,15 +162,7 @@ function byId(collectionName, id) {
   return doc(db, collectionName, id);
 }
 function addConfigNotice() {
-  const shell = document.querySelector('.shell') || document.body;
-  const box = document.createElement('div');
-  box.className = 'notice firebase-setup-notice';
-  box.innerHTML = `
-    <strong>ยังไม่ได้ใส่ Firebase Config</strong><br>
-    เปิดไฟล์ <code>assets/firebase-config.js</code> แล้ววางค่าจาก Firebase Project ก่อนใช้งาน
-    จากนั้นอัปขึ้น GitHub ใหม่ได้เลย
-  `;
-  shell.prepend(box);
+  return;
 }
 function setLang(lang) {
   state.lang = lang;
@@ -345,9 +337,8 @@ function renderGuest() {
   const grid = qs('guestMenuGrid');
   if (!grid) return;
   const items = filteredItems();
-  const fallbackNotice = '';
   const itemsHtml = items.length ? items.map(item => menuCard(item)).join('') : `<div class="empty-state">No menu items</div>`;
-  grid.innerHTML = `${fallbackNotice}${itemsHtml}`;
+  grid.innerHTML = itemsHtml;
   attachMenuActions(grid);
   const call = qs('callStaffBtn');
   if (call) call.onclick = () => showToast('Please call staff / 请呼叫服务员 / Пожалуйста, позовите официанта');
@@ -397,9 +388,8 @@ function renderStaff() {
   }
   const grid = qs('staffMenuGrid');
   const items = filteredItems();
-  const fallbackNotice = '';
   const itemsHtml = items.length ? items.map(item => menuCard(item, { staff:true })).join('') : `<div class="empty-state">No menu items</div>`;
-  grid.innerHTML = `${fallbackNotice}${itemsHtml}`;
+  grid.innerHTML = itemsHtml;
   attachMenuActions(grid);
   renderCart();
   qs('clearCartBtn').onclick = () => {
@@ -865,13 +855,8 @@ function showMissingProfile(containerId, messageExtra='') {
   container.innerHTML = `
     <div class="card soft">
       <h2>บัญชีนี้ยังไม่มีสิทธิ์ใช้งาน</h2>
-      <p>ล็อกอินสำเร็จแล้ว แต่ยังไม่มีข้อมูลใน collection <code>users</code></p>
-      <div class="notice" style="margin-top:12px">
-        Employee ID: ${escapeHtml(currentEmployeeId() || '-') }<br>
-        Email: ${escapeHtml(state.currentUser?.email || '-') }<br>
-        UID: ${escapeHtml(state.currentUser?.uid || '-') }<br>
-        ${messageExtra}
-      </div>
+      <p>โปรดติดต่อผู้ดูแลระบบเพื่อเปิดสิทธิ์การใช้งาน</p>
+      ${messageExtra ? `<div class="notice" style="margin-top:12px">${escapeHtml(messageExtra)}</div>` : ''}
     </div>
   `;
 }
@@ -881,7 +866,7 @@ function renderLoginModal(modalId, title='Login') {
   modal.innerHTML = `
     <div class="modal-card small auth-modal-card">
       <h2>${escapeHtml(title)}</h2>
-      <p>เข้าสู่ระบบหรือสมัครสมาชิกด้วย <strong>รหัสพนักงาน</strong> โดยระบบจะสร้าง Email ภายใน Firebase ให้อัตโนมัติ</p>
+      <p>เข้าสู่ระบบหรือสมัครสมาชิกด้วย <strong>รหัสพนักงาน</strong></p>
       <div class="auth-tabs">
         <button class="chip active" type="button" data-auth-tab="login">Login</button>
         <button class="chip" type="button" data-auth-tab="register">Register</button>
@@ -889,7 +874,7 @@ function renderLoginModal(modalId, title='Login') {
 
       <div class="auth-pane" data-auth-pane="login">
         <div class="form-grid" style="grid-template-columns:1fr">
-          <label><span>Employee ID หรือ Email</span><input id="${modalId}_login_identifier" type="text" placeholder="1001"></label>
+          <label><span>Employee ID</span><input id="${modalId}_login_identifier" type="text" placeholder="1001"></label>
           <label><span>Password</span><input id="${modalId}_login_password" type="password" placeholder="••••••••"></label>
         </div>
         <div class="form-actions">
@@ -904,7 +889,6 @@ function renderLoginModal(modalId, title='Login') {
           <label><span>Password</span><input id="${modalId}_register_password" type="password" placeholder="อย่างน้อย 6 ตัวอักษร"></label>
           <label><span>Confirm Password</span><input id="${modalId}_register_confirmPassword" type="password" placeholder="ยืนยันรหัสผ่าน"></label>
         </div>
-        <div class="notice" style="margin-top:10px">Email สำหรับ Firebase จะถูกสร้างอัตโนมัติในรูปแบบ <code>employeeid@${EMPLOYEE_EMAIL_DOMAIN}</code></div>
         <div class="form-actions">
           <button class="btn primary" id="${modalId}_registerBtn">Create Account</button>
         </div>
@@ -1019,15 +1003,10 @@ async function startPageForUser() {
       appContainer.classList.remove('hidden');
       appContainer.innerHTML = `
         <div class="card soft">
-          <h2>Bootstrap First Admin</h2>
-          <p>ยังไม่มี admin ในระบบ กดปุ่มด้านล่างเพื่อให้บัญชีที่ล็อกอินอยู่นี้เป็น admin คนแรก</p>
-          <div class="notice" style="margin-top:12px">
-            Employee ID: ${escapeHtml(currentEmployeeId() || '-')}<br>
-            Email: ${escapeHtml(state.currentUser.email || '-')}<br>
-            UID: ${escapeHtml(state.currentUser.uid || '-')}
-          </div>
+          <h2>Set First Admin</h2>
+          <p>กดปุ่มด้านล่างเพื่อกำหนดบัญชีนี้เป็นผู้ดูแลระบบคนแรก</p>
           <div class="form-actions" style="justify-content:flex-start">
-            <button class="btn primary" id="bootstrapAdminBtn">Make This Account Admin</button>
+            <button class="btn primary" id="bootstrapAdminBtn">Set as Admin</button>
           </div>
         </div>
       `;
@@ -1092,8 +1071,7 @@ async function seedFirestoreMenu() {
   }
 }
 function renderHome() {
-  const setupMode = qs('firebaseModeText');
-  if (setupMode) setupMode.textContent = isFirebaseConfigured() ? 'Firebase real-time mode' : 'Setup required';
+  return;
 }
 function renderPage() {
   if (PAGE === 'home') renderHome();
