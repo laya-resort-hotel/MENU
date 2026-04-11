@@ -1,43 +1,85 @@
-# The Taste Digital Menu Suite (GitHub Ready)
+# The Taste Digital Menu Suite — Firebase Real-time Version
 
-โปรเจกต์นี้เป็นเว็บแอปแบบ Static พร้อมอัปขึ้น GitHub Pages ได้ทันที โดยไม่ต้อง build และไม่จำเป็นต้องเปิดผ่าน VS Code
+เวอร์ชันนี้เป็นเว็บแอป **พร้อมอัปขึ้น GitHub Pages ได้เลย** และเชื่อม **Firebase จริง**
+โดยมี 4 หน้า:
+- `guest.html` ลูกค้าดูเมนู 3 ภาษา
+- `staff.html` พนักงานสมัคร/ล็อกอินด้วยรหัสพนักงานและส่ง order
+- `board.html` Hostess / Cashier รับ order real-time
+- `admin.html` Seed เมนู, แก้เมนู, จัดการ user profile
 
-## หน้าหลักในระบบ
-- `index.html` หน้า portal
-- `guest.html` เมนูลูกค้า 3 ภาษา
-- `staff.html` หน้าพนักงานสั่งอาหารและส่งขึ้นบอร์ด
-- `board.html` บอร์ด Hostess / Cashier
-- `admin.html` หน้า Admin CMS
+## ก่อนอัป GitHub
+ไฟล์ `assets/firebase-config.js` ถูกใส่ค่า Firebase ให้แล้วจากโปรเจกต์ `menu-5541a`
+จึงสามารถอัปขึ้น GitHub Pages ได้เลย
 
-## Demo Login
-- Staff: `staff` / `staff123`
-- Hostess: `hostess` / `hostess123`
-- Admin: `admin` / `admin123`
+ค่าที่ถูกใส่ไว้:
+```js
+export const firebaseConfig = {
+  apiKey: "AIzaSyAr0zHOGYT9mMV0_loNPrafbKsqDKmJ_Hs",
+  authDomain: "menu-5541a.firebaseapp.com",
+  projectId: "menu-5541a",
+  storageBucket: "menu-5541a.firebasestorage.app",
+  messagingSenderId: "153306806680",
+  appId: "1:153306806680:web:77e94ddc513cc7a6df93ed",
+  measurementId: "G-R2NN1YGP3H"
+};
+```
 
-## จุดสำคัญ
-- ใช้ Local Demo Storage ในเบราว์เซอร์
-- ใช้งานได้ทันทีหลังอัปขึ้น GitHub Pages
-- ไม่ต้องติดตั้ง npm
-- ไม่ต้องรัน build
-- เหมาะสำหรับ demo, mockup และเสนอ flow ก่อนต่อ Firebase จริง
+## Firebase ที่ต้องเปิด
+1. **Authentication**
+   - Sign-in method
+   - เปิด **Email/Password**
 
-## วิธีอัปขึ้น GitHub แบบไม่ใช้ VS Code
-1. สร้าง repository ใหม่บน GitHub
-2. กด `Add file` > `Upload files`
-3. อัปโหลดไฟล์ทั้งหมดจาก ZIP นี้
-4. กด `Commit changes`
-5. ไปที่ `Settings` > `Pages`
-6. ใน `Build and deployment` เลือก
-   - Source = `Deploy from a branch`
-   - Branch = `main` / root
-7. Save
-8. รอ GitHub Pages สร้างลิงก์
+2. **Firestore Database**
+   - สร้าง Firestore แบบ Native mode
 
-## หมายเหตุสำคัญ
-เวอร์ชันนี้เป็น **GitHub Pages Local Demo Mode**
-- ถ้าเปิดหลายเครื่องพร้อมกัน ข้อมูลจะไม่ sync ข้ามเครื่อง
-- ถ้าต้องการ real-time จริงหลายอุปกรณ์ ต้องต่อ Firebase ภายหลัง
-- โครงสร้างหน้าจอและ data flow ในชุดนี้สามารถใช้ต่อ Firebase ได้เลยในรอบถัดไป
+## วิธีใช้งานครั้งแรก
+1. อัปไฟล์ทั้งหมดขึ้น GitHub repo
+2. เปิด GitHub Pages
+3. เปิด `admin.html`
+4. เปิด `admin.html` แล้วกดแท็บ **Register**
+5. สมัครด้วย **Employee ID + Password**
+6. ถ้ายังไม่มี admin ในระบบ หน้าเว็บจะขึ้นปุ่ม **Make This Account Admin**
+7. กดปุ่มนั้นเพื่อ bootstrap admin คนแรก
+8. กดปุ่ม **Seed Firestore Menu** เพื่อใส่เมนูเริ่มต้นลง Firestore
 
-## การรีเซ็ตข้อมูลเดโม
-เข้า `admin.html` แล้วกดปุ่ม `Reset Demo Data`
+## การสร้าง user ใช้งานจริง
+ระบบนี้ใช้ 2 ส่วน:
+- Firebase Authentication = บัญชีล็อกอิน (ระบบสร้าง email ภายในให้อัตโนมัติจาก Employee ID)
+- Firestore `users` collection = role / profile
+
+### ขั้นตอน
+1. ให้พนักงานเข้า `staff.html`, `board.html` หรือ `admin.html`
+2. กดแท็บ **Register**
+3. ใส่ Employee ID, Display Name และ Password
+4. ระบบจะสร้างบัญชี Firebase Auth ให้โดยอัตโนมัติในรูปแบบ `employeeid@employee.menu-5541a.local`
+5. พร้อมสร้าง `users/{uid}` role เริ่มต้นเป็น `staff`
+6. ถ้าต้องการสิทธิ์มากกว่า staff ให้ admin เข้า `admin.html` แล้วแก้ role ภายหลัง
+
+### role ที่ใช้ได้
+- `staff`
+- `hostess`
+- `cashier`
+- `manager`
+- `admin`
+
+## คอลเลกชันที่ระบบใช้
+- `menu_categories`
+- `menu_items`
+- `orders`
+- `users`
+- `app_settings`
+
+## Firestore Rules
+คัดลอกจากไฟล์ `firebase/firestore.rules` ไปวางใน Firebase Console
+
+## หมายเหตุ
+- รูปเมนูเริ่มต้นอยู่ใน `assets/menu/`
+- ถ้าจะเพิ่มเมนูใหม่ สามารถใช้ `Image URL` เป็น path ใน repo หรือเป็น URL ภายนอกได้
+- เวอร์ชันนี้ไม่ต้อง build และไม่ต้องใช้ VS Code
+
+
+## สิ่งที่ต้องทำเพิ่มใน Firebase Console
+1. เปิด **Authentication > Sign-in method > Email/Password**
+2. สร้าง **Firestore Database** แบบ Native mode
+3. นำไฟล์ `firebase/firestore.rules` ไปวางใน Firestore Rules แล้วกด Publish
+4. เปิด `admin.html` แล้วสมัครบัญชีแรกด้วย Employee ID จากหน้า Register จากนั้นกด Make This Account Admin

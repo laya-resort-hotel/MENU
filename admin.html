@@ -11,10 +11,10 @@
     <header class="topbar">
       <a href="index.html" class="brand-block">
         <span class="brand-kicker">THE TASTE</span>
-        <strong>Admin CMS</strong>
+        <strong>Admin CMS (Firebase + Employee ID Auth)</strong>
       </a>
       <div class="topbar-actions">
-        <button class="btn small" id="resetDemoBtn">Reset Demo Data</button>
+        <button class="btn small" id="seedFirestoreBtn">Seed Firestore Menu</button>
         <button class="btn small secondary" id="adminLogoutBtn">Logout</button>
       </div>
     </header>
@@ -33,11 +33,21 @@
       </div>
 
       <div id="adminList" class="admin-list"></div>
+
+      <section class="section-intro" style="margin-top:28px">
+        <h1 style="font-size:30px">User Profiles</h1>
+        <p>พนักงานสมัครเองได้ด้วยรหัสพนักงานจากหน้า Login/Register แล้วค่อยใช้หน้านี้ปรับ role และสิทธิ์</p>
+      </section>
+      <div class="toolbar admin-toolbar">
+        <button class="btn primary" id="addUserBtn">Add User Profile</button>
+      </div>
+      <div id="userList" class="admin-list"></div>
     </section>
   </div>
 
   <div id="adminLoginModal" class="modal hidden"></div>
   <div id="adminEditorModal" class="modal hidden"></div>
-  <script src="assets/app.js"></script>
+  <div id="userEditorModal" class="modal hidden"></div>
+  <script type="module" src="assets/app-firebase.js"></script>
 </body>
 </html>
