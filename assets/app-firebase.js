@@ -150,6 +150,21 @@ function currentEmployeeId() {
 function currentUserLabel(fallback='User') {
   return state.currentProfile?.displayName || currentEmployeeId() || state.currentUser?.email || fallback;
 }
+function currentRole() {
+  return state.currentProfile?.role || null;
+}
+function isRole(...roles) {
+  return state.currentProfile?.active !== false && roles.includes(currentRole());
+}
+function canAccessStaff() {
+  return isRole('staff', 'manager', 'admin');
+}
+function canAccessBoard() {
+  return isRole('hostess', 'cashier', 'manager', 'admin');
+}
+function canAccessAdmin() {
+  return isRole('admin');
+}
 
 function qs(id) { return document.getElementById(id); }
 function escapeHtml(str='') {
@@ -1088,7 +1103,7 @@ async function startPageForUser() {
   await fetchMenu();
 
   if (PAGE === 'staff') {
-    if (!state.currentProfile || !['staff','manager','admin'].includes(state.currentProfile.role) || state.currentProfile.active === false) {
+    if (!state.currentProfile || !canAccessStaff()) {
       showMissingProfile('staffApp', 'ให้ admin เพิ่ม role เป็น staff / manager / admin');
       return;
     }
@@ -1099,7 +1114,7 @@ async function startPageForUser() {
   }
 
   if (PAGE === 'board') {
-    if (!state.currentProfile || !['hostess','cashier','manager','admin'].includes(state.currentProfile.role) || state.currentProfile.active === false) {
+    if (!state.currentProfile || !canAccessBoard()) {
       showMissingProfile('boardApp', 'ให้ admin เพิ่ม role เป็น hostess / cashier / manager / admin');
       return;
     }
@@ -1149,7 +1164,7 @@ async function startPageForUser() {
       showMissingProfile('adminApp', 'ให้ admin เพิ่ม user profile สำหรับ UID นี้ หรือสมัครผ่านรหัสพนักงานก่อน');
       return;
     }
-    if (!['admin','manager'].includes(state.currentProfile.role) || state.currentProfile.active === false) {
+    if (!canAccessAdmin()) {
       showMissingProfile('adminApp', 'บัญชีนี้ไม่มีสิทธิ์เข้า Admin');
       return;
     }
@@ -1202,7 +1217,76 @@ async function seedFirestoreMenu() {
   }
 }
 function renderHome() {
-  return;
+  const heroActions = document.querySelector('.hero-actions');
+  const portalGrid = document.querySelector('.portal-grid');
+  const accessNote = qs('homeAccessNote');
+  const isLoggedIn = !!state.currentUser;
+  const actions = [];
+  const cards = [];
+
+  const addAction = (label, href, primary=false) => {
+    actions.push(`<a class="btn ${primary ? 'primary' : ''}" href="${href}">${label}</a>`);
+  };
+  const addCard = (title, desc, href) => {
+    cards.push(`
+      <a class="portal-card" href="${href}">
+        <h2>${title}</h2>
+        <p>${desc}</p>
+        <span>Open</span>
+      </a>
+    `);
+  };
+
+  if (!isLoggedIn) {
+    addAction('เปิดเมนูลูกค้า', 'guest.html', true);
+    addAction('Staff Order', 'staff.html');
+    addCard('Guest Menu', 'ลูกค้าดูเมนู เปลี่ยนภาษา EN / 中文 / Русский ได้เอง', 'guest.html');
+    addCard('Staff Order', 'พนักงานล็อกอินด้วยรหัสพนักงาน แล้วเลือกเมนูส่ง order ขึ้นบอร์ด', 'staff.html');
+    if (accessNote) accessNote.textContent = 'ผู้ใช้ใหม่ที่สมัครจากระบบจะเริ่มต้นเป็น role staff และหลังล็อกอินจะเห็นเฉพาะหน้า Staff Order';
+  } else if (canAccessAdmin()) {
+    addAction('เปิดเมนูลูกค้า', 'guest.html', true);
+    addAction('Staff Order', 'staff.html');
+    addAction('Order Board', 'board.html');
+    addAction('Admin CMS', 'admin.html');
+    addCard('Guest Menu', 'ลูกค้าดูเมนู เปลี่ยนภาษา EN / 中文 / Русский ได้เอง', 'guest.html');
+    addCard('Staff Order', 'พนักงานเลือกรายการอาหาร ใส่รายละเอียด และส่งขึ้นบอร์ด', 'staff.html');
+    addCard('Order Board', 'Hostess / Cashier เห็น order แบบ real-time พร้อมเสียงแจ้งเตือน', 'board.html');
+    addCard('Admin CMS', 'จัดการเมนู 3 ภาษา ราคา สถานะขาย และ role ของผู้ใช้', 'admin.html');
+    addAction('Logout', '#logout');
+    if (accessNote) accessNote.textContent = `${currentUserLabel('User')} (admin)`;
+  } else {
+    if (currentRole() === 'staff') {
+      addAction('Staff Order', 'staff.html', true);
+      addCard('Staff Order', 'พนักงานเลือกรายการอาหาร ใส่รายละเอียด และส่งขึ้นบอร์ด', 'staff.html');
+    } else {
+      if (canAccessStaff()) {
+        addAction('Staff Order', 'staff.html', true);
+        addCard('Staff Order', 'พนักงานเลือกรายการอาหาร ใส่รายละเอียด และส่งขึ้นบอร์ด', 'staff.html');
+      }
+      if (canAccessBoard()) {
+        addAction('Order Board', 'board.html', !canAccessStaff());
+        addCard('Order Board', 'Hostess / Cashier เห็น order แบบ real-time พร้อมเสียงแจ้งเตือน', 'board.html');
+      }
+    }
+    addAction('Logout', '#logout');
+    if (accessNote) accessNote.textContent = `${currentUserLabel('User')} (${currentRole() || 'user'})`;
+  }
+
+  if (heroActions) {
+    heroActions.innerHTML = actions.join('');
+    const logoutLink = heroActions.querySelector('a[href="#logout"]');
+    if (logoutLink) {
+      logoutLink.addEventListener('click', async (event) => {
+        event.preventDefault();
+        stopBoardAlarmLoop();
+        await signOut(auth);
+        window.location.reload();
+      });
+    }
+  }
+  if (portalGrid) {
+    portalGrid.innerHTML = cards.join('');
+  }
 }
 function renderPage() {
   if (PAGE === 'home') renderHome();
@@ -1238,7 +1322,21 @@ async function init() {
   db = getFirestore(app);
 
   if (PAGE === 'home') {
-    renderHome();
+    onAuthStateChanged(auth, async user => {
+      state.currentUser = user || null;
+      if (user) {
+        try {
+          const profileSnap = await getDoc(doc(db, 'users', user.uid));
+          state.currentProfile = profileSnap.exists() ? { uid:user.uid, ...profileSnap.data() } : null;
+        } catch (err) {
+          console.error('load profile on home failed', err);
+          state.currentProfile = null;
+        }
+      } else {
+        state.currentProfile = null;
+      }
+      renderHome();
+    });
     return;
   }
   if (PAGE === 'guest') return initPublicMenu();

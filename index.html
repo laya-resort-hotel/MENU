@@ -12,15 +12,14 @@
       
       <h1>THE TASTE<br><span>Digital Menu Suite</span></h1>
       <p>เมนูออนไลน์ 3 ภาษา พร้อมหน้าพนักงาน บอร์ดออเดอร์ และหน้าแอดมิน</p>
-      <div class="hero-actions">
+      <div class="hero-actions" id="homeHeroActions">
         <a class="btn primary" href="guest.html">เปิดเมนูลูกค้า</a>
-        <a class="btn" href="staff.html">หน้าพนักงาน</a>
-        <a class="btn" href="board.html">Order Board</a>
-        <a class="btn" href="admin.html">Admin CMS</a>
+        <a class="btn" href="staff.html">Staff Order</a>
       </div>
+      <p class="hero-note" id="homeAccessNote"></p>
     </header>
 
-    <section class="portal-grid">
+    <section class="portal-grid" id="homePortalGrid">
       <a class="portal-card" href="guest.html">
         <h2>Guest Menu</h2>
         <p>ลูกค้าดูเมนู เปลี่ยนภาษา EN / 中文 / Русский ได้เอง</p>
@@ -28,17 +27,7 @@
       </a>
       <a class="portal-card" href="staff.html">
         <h2>Staff Order</h2>
-        <p>พนักงานล็อกอินด้วย Firebase Auth แล้วเลือกเมนู ส่ง order ขึ้นบอร์ดจริง</p>
-        <span>Open</span>
-      </a>
-      <a class="portal-card" href="board.html">
-        <h2>Order Board</h2>
-        <p>Hostess / Cashier เห็น order real-time จาก Firestore พร้อมเสียงแจ้งเตือน</p>
-        <span>Open</span>
-      </a>
-      <a class="portal-card" href="admin.html">
-        <h2>Admin CMS</h2>
-        <p>Seed เมนูเริ่มต้น แก้ชื่อ 3 ภาษา ราคา สถานะขาย และจัดการ role / user profile ได้</p>
+        <p>พนักงานล็อกอินด้วยรหัสพนักงาน แล้วเลือกเมนูส่ง order ขึ้นบอร์ด</p>
         <span>Open</span>
       </a>
     </section>

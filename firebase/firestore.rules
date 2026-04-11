@@ -18,8 +18,8 @@ service cloud.firestore {
       return hasUserDoc() ? get(userPath(request.auth.uid)).data.role : null;
     }
 
-    function isAdminLike() {
-      return role() in ['admin', 'manager'];
+    function isAdminOnly() {
+      return role() == 'admin';
     }
 
     function canStaffOrder() {
@@ -37,26 +37,26 @@ service cloud.firestore {
 
     match /menu_categories/{docId} {
       allow read: if true;
-      allow create, update, delete: if isAdminLike();
+      allow create, update, delete: if isAdminOnly();
     }
 
     match /menu_items/{docId} {
       allow read: if true;
-      allow create, update, delete: if isAdminLike();
+      allow create, update, delete: if isAdminOnly();
     }
 
     match /orders/{orderId} {
       allow create: if canStaffOrder() &&
         request.resource.data.createdByUid == request.auth.uid;
 
-      allow read: if canBoard() || isAdminLike() ||
+      allow read: if canBoard() || isAdminOnly() ||
         (signedIn() && resource.data.createdByUid == request.auth.uid);
 
-      allow update, delete: if canBoard() || isAdminLike();
+      allow update, delete: if canBoard() || isAdminOnly();
     }
 
     match /users/{uid} {
-      allow read: if signedIn() && (request.auth.uid == uid || isAdminLike());
+      allow read: if signedIn() && (request.auth.uid == uid || isAdminOnly());
 
       allow create: if
         (signedIn() &&
@@ -67,20 +67,20 @@ service cloud.firestore {
            (!bootstrapDone() && request.resource.data.role in ['staff', 'admin']) ||
            (bootstrapDone() && request.resource.data.role == 'staff')
          ))
-        || isAdminLike();
+        || isAdminOnly();
 
-      allow update: if isAdminLike() ||
+      allow update: if isAdminOnly() ||
         (signedIn() &&
          request.auth.uid == uid &&
          !bootstrapDone() &&
          request.resource.data.role == 'admin');
 
-      allow delete: if isAdminLike();
+      allow delete: if isAdminOnly();
     }
 
     match /app_settings/{docId} {
       allow read: if signedIn();
-      allow create, update: if isAdminLike() ||
+      allow create, update: if isAdminOnly() ||
         (signedIn() && !bootstrapDone() && docId == 'main');
       allow delete: if false;
     }
