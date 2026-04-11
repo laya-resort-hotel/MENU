@@ -44,7 +44,9 @@ const state = {
   boardOrders: [],
   soundEnabled: localStorage.getItem('taste_board_sound') === 'on',
   lastPendingKey: '',
-  userDrafts: []
+  userDrafts: [],
+  menuSource: 'firestore',
+  menuNotice: ''
 };
 
 let app = null;
@@ -343,7 +345,11 @@ function renderGuest() {
   const grid = qs('guestMenuGrid');
   if (!grid) return;
   const items = filteredItems();
-  grid.innerHTML = items.length ? items.map(item => menuCard(item)).join('') : `<div class="empty-state">No menu items</div>`;
+  const fallbackNotice = state.menuSource === 'seed'
+    ? `<div class="notice fallback-menu-notice"><strong>Fallback menu mode</strong><br>${escapeHtml(state.menuNotice || 'Showing built-in menu data.')}</div>`
+    : '';
+  const itemsHtml = items.length ? items.map(item => menuCard(item)).join('') : `<div class="empty-state">No menu items</div>`;
+  grid.innerHTML = `${fallbackNotice}${itemsHtml}`;
   attachMenuActions(grid);
   const call = qs('callStaffBtn');
   if (call) call.onclick = () => showToast('Please call staff / 请呼叫服务员 / Пожалуйста, позовите официанта');
@@ -392,7 +398,12 @@ function renderStaff() {
     };
   }
   const grid = qs('staffMenuGrid');
-  grid.innerHTML = filteredItems().map(item => menuCard(item, { staff:true })).join('');
+  const items = filteredItems();
+  const fallbackNotice = state.menuSource === 'seed'
+    ? `<div class="notice fallback-menu-notice"><strong>Fallback menu mode</strong><br>${escapeHtml(state.menuNotice || 'Showing built-in menu data.')}</div>`
+    : '';
+  const itemsHtml = items.length ? items.map(item => menuCard(item, { staff:true })).join('') : `<div class="empty-state">No menu items</div>`;
+  grid.innerHTML = `${fallbackNotice}${itemsHtml}`;
   attachMenuActions(grid);
   renderCart();
   qs('clearCartBtn').onclick = () => {
@@ -795,13 +806,32 @@ function wireCommonAuthButtons() {
     if (el) el.onclick = async () => { await signOut(auth); window.location.reload(); };
   });
 }
+function useSeedMenuFallback(reason='') {
+  state.categories = seedCategories.filter(cat => cat.id !== 'all').map(cat => ({ ...cat }));
+  state.items = seedItems.map(item => ({ ...item }));
+  state.menuSource = 'seed';
+  state.menuNotice = reason || 'Using built-in fallback menu because Firestore menu data is missing.';
+}
 async function fetchMenu() {
-  const [catsSnap, itemsSnap] = await Promise.all([
-    getDocs(collection(db, 'menu_categories')),
-    getDocs(collection(db, 'menu_items'))
-  ]);
-  state.categories = catsSnap.docs.map(d => ({ id:d.id, ...d.data() }));
-  state.items = itemsSnap.docs.map(d => ({ id:d.id, ...d.data() }));
+  try {
+    const [catsSnap, itemsSnap] = await Promise.all([
+      getDocs(collection(db, 'menu_categories')),
+      getDocs(collection(db, 'menu_items'))
+    ]);
+    const categories = catsSnap.docs.map(d => ({ id:d.id, ...d.data() }));
+    const items = itemsSnap.docs.map(d => ({ id:d.id, ...d.data() }));
+    if (!categories.length || !items.length) {
+      useSeedMenuFallback('Firestore ยังไม่มีข้อมูลเมนู ระบบจะแสดงเมนูสำรองชั่วคราว');
+      return;
+    }
+    state.categories = categories;
+    state.items = items;
+    state.menuSource = 'firestore';
+    state.menuNotice = '';
+  } catch (err) {
+    console.error('fetchMenu failed, using fallback menu', err);
+    useSeedMenuFallback('อ่านเมนูจาก Firestore ไม่สำเร็จ ระบบจะแสดงเมนูสำรองชั่วคราว');
+  }
 }
 async function fetchUsers() {
   const snap = await getDocs(collection(db, 'users'));
