@@ -156,3 +156,23 @@ body{min-height:100vh}
 .global-toast[data-variant="danger"]{background:#b84739}
 .global-toast[data-variant="success"]{background:#3e7f58}
 code{background:#f7efe6;padding:2px 6px;border-radius:8px}
+
+
+.board-card.alerting{
+  background:rgba(255,232,232,.94);
+  border-color:rgba(212,52,52,.58);
+  box-shadow:0 16px 36px rgba(180,32,32,.18);
+  animation:boardAlertFlash 1s ease-in-out infinite;
+}
+.board-card.alerting h3,
+.board-card.alerting .meta,
+.board-card.alerting li{color:#7a1d1d}
+.board-card.alerting .badge-new{
+  background:#c92a2a;
+  color:#fff;
+  box-shadow:0 0 0 4px rgba(201,42,42,.14);
+}
+@keyframes boardAlertFlash{
+  0%,100%{background:rgba(255,232,232,.94);border-color:rgba(212,52,52,.58);transform:translateY(0);}
+  50%{background:rgba(255,120,120,.28);border-color:rgba(185,0,0,.95);transform:translateY(-1px);}
+}

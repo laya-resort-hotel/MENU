@@ -56,6 +56,8 @@ let menuUnsub = null;
 let boardUnsub = null;
 let boardAlarmTimer = null;
 let boardAlarmRunning = false;
+let boardAlarmAudio = null;
+let boardAlarmFallbackLastAt = 0;
 
 const EMPLOYEE_EMAIL_DOMAIN = `employee.${(firebaseConfig?.projectId || 'menu').toLowerCase()}.local`;
 function normalizeEmployeeId(input='') {
@@ -488,8 +490,15 @@ function beep(times = 2) {
 
 function stopBoardAlarmLoop() {
   if (boardAlarmTimer) {
-    clearTimeout(boardAlarmTimer);
+    clearInterval(boardAlarmTimer);
     boardAlarmTimer = null;
+  }
+  const audio = ensureBoardAlarmAudio();
+  if (audio) {
+    try {
+      audio.pause();
+      audio.currentTime = 0;
+    } catch (_) {}
   }
   boardAlarmRunning = false;
 }
@@ -498,17 +507,31 @@ function startBoardAlarmLoop() {
   if (boardAlarmRunning || !state.soundEnabled) return;
   boardAlarmRunning = true;
 
-  const tick = () => {
+  const tick = async () => {
     const hasPendingAlarm = PAGE === 'board' && state.boardOrders.some(o => o.status === 'sent' && o.soundAlertActive !== false);
     if (!state.soundEnabled || !hasPendingAlarm) {
       stopBoardAlarmLoop();
       return;
     }
-    beep(3);
-    boardAlarmTimer = setTimeout(tick, 1800);
+
+    const audio = ensureBoardAlarmAudio();
+    if (audio) {
+      try {
+        audio.volume = 1.0;
+        if (audio.paused) {
+          await audio.play();
+        }
+      } catch (err) {
+        console.warn('alarm play failed', err);
+        playFallbackBeep();
+      }
+    } else {
+      playFallbackBeep();
+    }
   };
 
   tick();
+  boardAlarmTimer = setInterval(tick, 1500);
 }
 
 function syncBoardAlarmLoop() {
@@ -543,7 +566,7 @@ function renderBoardCard(order) {
   }
 
   return `
-    <article class="board-card card">
+    <article class="board-card card ${order.status === 'sent' && order.soundAlertActive !== false ? 'alerting' : ''}">
       <div class="price-row">
         <h3>${escapeHtml(order.orderNo || 'Order')}</h3>
         ${order.status === 'sent' ? '<span class="badge-new">NEW</span>' : ''}
@@ -1014,12 +1037,12 @@ async function startPageForUser() {
     }
     qs('boardApp').classList.remove('hidden');
     qs('enableSoundBtn').textContent = state.soundEnabled ? 'Mute Alarm' : 'Enable Alarm';
-    qs('enableSoundBtn').onclick = () => {
+    qs('enableSoundBtn').onclick = async () => {
       state.soundEnabled = !state.soundEnabled;
       localStorage.setItem('taste_board_sound', state.soundEnabled ? 'on' : 'off');
       qs('enableSoundBtn').textContent = state.soundEnabled ? 'Mute Alarm' : 'Enable Alarm';
       if (state.soundEnabled) {
-        beep(1);
+        await unlockBoardAlarmAudio();
         syncBoardAlarmLoop();
       } else {
         stopBoardAlarmLoop();
