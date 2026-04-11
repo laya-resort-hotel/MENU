@@ -150,9 +150,3 @@ body{min-height:100vh}
   .menu-grid{grid-template-columns:1fr}
   .topbar,.toolbar,.hero-actions,.topbar-actions{align-items:flex-start}
 }
-
-.global-toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%) translateY(20px);padding:12px 16px;border-radius:999px;background:#4a3528;color:#fff;opacity:0;pointer-events:none;transition:.2s ease;z-index:120;box-shadow:var(--shadow)}
-.global-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-.global-toast[data-variant="danger"]{background:#b84739}
-.global-toast[data-variant="success"]{background:#3e7f58}
-code{background:#f7efe6;padding:2px 6px;border-radius:8px}

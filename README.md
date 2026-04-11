@@ -1,75 +1,43 @@
-# The Taste Digital Menu Suite — Firebase Real-time Version
+# The Taste Digital Menu Suite (GitHub Ready)
 
-เวอร์ชันนี้เป็นเว็บแอป **พร้อมอัปขึ้น GitHub Pages ได้เลย** และเชื่อม **Firebase จริง**
-โดยมี 4 หน้า:
-- `guest.html` ลูกค้าดูเมนู 3 ภาษา
-- `staff.html` พนักงานล็อกอินและส่ง order
-- `board.html` Hostess / Cashier รับ order real-time
-- `admin.html` Seed เมนู, แก้เมนู, จัดการ user profile
+โปรเจกต์นี้เป็นเว็บแอปแบบ Static พร้อมอัปขึ้น GitHub Pages ได้ทันที โดยไม่ต้อง build และไม่จำเป็นต้องเปิดผ่าน VS Code
 
-## ก่อนอัป GitHub
-แก้ไฟล์ `assets/firebase-config.js`
+## หน้าหลักในระบบ
+- `index.html` หน้า portal
+- `guest.html` เมนูลูกค้า 3 ภาษา
+- `staff.html` หน้าพนักงานสั่งอาหารและส่งขึ้นบอร์ด
+- `board.html` บอร์ด Hostess / Cashier
+- `admin.html` หน้า Admin CMS
 
-วางค่าจาก Firebase Project ของคุณ:
-```js
-export const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT.firebasestorage.app",
-  messagingSenderId: "123456789",
-  appId: "YOUR_APP_ID"
-};
-```
+## Demo Login
+- Staff: `staff` / `staff123`
+- Hostess: `hostess` / `hostess123`
+- Admin: `admin` / `admin123`
 
-## Firebase ที่ต้องเปิด
-1. **Authentication**
-   - Sign-in method
-   - เปิด **Email/Password**
+## จุดสำคัญ
+- ใช้ Local Demo Storage ในเบราว์เซอร์
+- ใช้งานได้ทันทีหลังอัปขึ้น GitHub Pages
+- ไม่ต้องติดตั้ง npm
+- ไม่ต้องรัน build
+- เหมาะสำหรับ demo, mockup และเสนอ flow ก่อนต่อ Firebase จริง
 
-2. **Firestore Database**
-   - สร้าง Firestore แบบ Native mode
+## วิธีอัปขึ้น GitHub แบบไม่ใช้ VS Code
+1. สร้าง repository ใหม่บน GitHub
+2. กด `Add file` > `Upload files`
+3. อัปโหลดไฟล์ทั้งหมดจาก ZIP นี้
+4. กด `Commit changes`
+5. ไปที่ `Settings` > `Pages`
+6. ใน `Build and deployment` เลือก
+   - Source = `Deploy from a branch`
+   - Branch = `main` / root
+7. Save
+8. รอ GitHub Pages สร้างลิงก์
 
-## วิธีใช้งานครั้งแรก
-1. อัปไฟล์ทั้งหมดขึ้น GitHub repo
-2. เปิด GitHub Pages
-3. เปิด `admin.html`
-4. ล็อกอินด้วย Email/Password ของบัญชีที่คุณสร้างไว้ใน Firebase Auth
-5. ถ้ายังไม่มี admin ในระบบ หน้าเว็บจะขึ้นปุ่ม **Make This Account Admin**
-6. กดปุ่มนั้นเพื่อ bootstrap admin คนแรก
-7. กดปุ่ม **Seed Firestore Menu** เพื่อใส่เมนูเริ่มต้นลง Firestore
+## หมายเหตุสำคัญ
+เวอร์ชันนี้เป็น **GitHub Pages Local Demo Mode**
+- ถ้าเปิดหลายเครื่องพร้อมกัน ข้อมูลจะไม่ sync ข้ามเครื่อง
+- ถ้าต้องการ real-time จริงหลายอุปกรณ์ ต้องต่อ Firebase ภายหลัง
+- โครงสร้างหน้าจอและ data flow ในชุดนี้สามารถใช้ต่อ Firebase ได้เลยในรอบถัดไป
 
-## การสร้าง user ใช้งานจริง
-ระบบนี้ใช้ 2 ส่วน:
-- Firebase Authentication = บัญชีล็อกอิน
-- Firestore `users` collection = role / profile
-
-### ขั้นตอน
-1. ไปที่ Firebase Console > Authentication
-2. สร้าง user แบบ Email/Password
-3. เอา UID ของคนนั้นจาก Firebase Console
-4. เข้า `admin.html`
-5. กด **Add User Profile**
-6. ใส่ UID, email, display name, role
-
-### role ที่ใช้ได้
-- `staff`
-- `hostess`
-- `cashier`
-- `manager`
-- `admin`
-
-## คอลเลกชันที่ระบบใช้
-- `menu_categories`
-- `menu_items`
-- `orders`
-- `users`
-- `app_settings`
-
-## Firestore Rules
-คัดลอกจากไฟล์ `firebase/firestore.rules` ไปวางใน Firebase Console
-
-## หมายเหตุ
-- รูปเมนูเริ่มต้นอยู่ใน `assets/menu/`
-- ถ้าจะเพิ่มเมนูใหม่ สามารถใช้ `Image URL` เป็น path ใน repo หรือเป็น URL ภายนอกได้
-- เวอร์ชันนี้ไม่ต้อง build และไม่ต้องใช้ VS Code
+## การรีเซ็ตข้อมูลเดโม
+เข้า `admin.html` แล้วกดปุ่ม `Reset Demo Data`
