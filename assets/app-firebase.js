@@ -6,7 +6,6 @@ import {
   getAuth,
   onAuthStateChanged,
   signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
   signOut
 } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
 import {
@@ -52,34 +51,6 @@ let auth = null;
 let db = null;
 let menuUnsub = null;
 let boardUnsub = null;
-
-const EMPLOYEE_EMAIL_DOMAIN = `employee.${(firebaseConfig?.projectId || 'menu').toLowerCase()}.local`;
-function normalizeEmployeeId(input='') {
-  return String(input).trim().replace(/\s+/g, '').toUpperCase();
-}
-function employeeIdToEmail(employeeId='') {
-  const normalized = normalizeEmployeeId(employeeId);
-  if (!normalized) return '';
-  return `${normalized.toLowerCase()}@${EMPLOYEE_EMAIL_DOMAIN}`;
-}
-function looksLikeEmail(input='') {
-  return String(input).includes('@');
-}
-function credentialToEmail(loginInput='') {
-  const value = String(loginInput).trim();
-  return looksLikeEmail(value) ? value : employeeIdToEmail(value);
-}
-function employeeIdFromEmail(email='') {
-  const [localPart='', domain=''] = String(email).toLowerCase().split('@');
-  if (domain !== EMPLOYEE_EMAIL_DOMAIN.toLowerCase()) return '';
-  return localPart.toUpperCase();
-}
-function currentEmployeeId() {
-  return state.currentProfile?.employeeId || employeeIdFromEmail(state.currentUser?.email || '');
-}
-function currentUserLabel(fallback='User') {
-  return state.currentProfile?.displayName || currentEmployeeId() || state.currentUser?.email || fallback;
-}
 
 function qs(id) { return document.getElementById(id); }
 function escapeHtml(str='') {
@@ -422,9 +393,8 @@ async function sendOrderToBoard() {
     generalComment,
     languageUsed: state.lang,
     createdByUid: state.currentUser.uid,
-    createdByName: currentUserLabel('Staff'),
-    createdByEmail: state.currentUser.email || employeeIdToEmail(currentEmployeeId()) || '',
-    createdByEmployeeId: currentEmployeeId() || '',
+    createdByName: state.currentProfile?.displayName || state.currentUser.email || 'Staff',
+    createdByEmail: state.currentUser.email || '',
     acknowledgedByUid: null,
     acknowledgedByName: null,
     acknowledgedAt: null,
@@ -540,19 +510,19 @@ function renderBoard() {
     soundAlertActive: false,
     newBadge: false,
     acknowledgedByUid: state.currentUser.uid,
-    acknowledgedByName: currentUserLabel('Hostess'),
+    acknowledgedByName: state.currentProfile?.displayName || state.currentUser.email || 'Hostess',
     acknowledgedAt: serverTimestamp()
   })));
   document.querySelectorAll('[data-order-keyed]').forEach(btn => btn.addEventListener('click', () => updateOrderStatus(btn.dataset.orderKeyed, {
     status: 'keyed',
     keyedByUid: state.currentUser.uid,
-    keyedByName: currentUserLabel('Hostess'),
+    keyedByName: state.currentProfile?.displayName || state.currentUser.email || 'Hostess',
     keyedAt: serverTimestamp()
   })));
   document.querySelectorAll('[data-order-close]').forEach(btn => btn.addEventListener('click', () => updateOrderStatus(btn.dataset.orderClose, {
     status: 'closed',
     closedByUid: state.currentUser.uid,
-    closedByName: currentUserLabel('Hostess'),
+    closedByName: state.currentProfile?.displayName || state.currentUser.email || 'Hostess',
     closedAt: serverTimestamp()
   })));
 
@@ -619,7 +589,7 @@ function userRow(user) {
       <div class="admin-main" style="grid-template-columns:minmax(0,1fr) auto">
         <div class="admin-copy">
           <h3>${escapeHtml(user.displayName || user.email || user.uid)}</h3>
-          <p>Employee ID: ${escapeHtml(user.employeeId || '-')}<br>${escapeHtml(user.email || '')}<br>UID: ${escapeHtml(user.uid || '')}</p>
+          <p>${escapeHtml(user.email || '')}<br>UID: ${escapeHtml(user.uid || '')}</p>
           <div class="status-row">
             <span class="pill active">${escapeHtml(user.role || 'staff')}</span>
             <span class="pill ${user.active === false ? 'soldout' : 'active'}">${user.active === false ? 'Disabled' : 'Active'}</span>
@@ -745,7 +715,7 @@ function openUserEditor(uid) {
   modal.innerHTML = `
     <div class="modal-card">
       <h2>${existing ? 'Edit User Profile' : 'Add User Profile'}</h2>
-      <p>ใช้สำหรับแก้ role / employee ID / ชื่อแสดงผล ของผู้ใช้ที่สมัครแล้ว หรือเพิ่ม profile ให้บัญชีที่มีอยู่</p>
+      <p>Auth account ต้องสร้างใน Firebase Authentication ก่อน แล้วค่อยใส่ UID ที่นี่</p>
       <div class="form-grid">
         <label><span>Auth UID</span><input id="editUserUid" type="text" value="${escapeHtml(user.uid || '')}" ${existing ? 'disabled' : ''}></label>
         <label><span>Email</span><input id="editUserEmail" type="text" value="${escapeHtml(user.email || '')}"></label>
@@ -810,15 +780,13 @@ async function fetchUsers() {
 async function bootstrapFirstAdmin() {
   await setDoc(doc(db, 'users', state.currentUser.uid), {
     uid: state.currentUser.uid,
-    email: state.currentUser.email || employeeIdToEmail(currentEmployeeId()) || '',
-    employeeId: currentEmployeeId() || '',
-    displayName: currentUserLabel('Admin'),
+    email: state.currentUser.email || '',
+    displayName: state.currentUser.email || 'Admin',
     role: 'admin',
     active: true,
-    signupMethod: state.currentProfile?.signupMethod || 'employee_id',
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp()
-  }, { merge: true });
+  });
   await setDoc(doc(db, 'app_settings', 'main'), {
     outletName: 'The Taste',
     bootstrapComplete: true,
@@ -829,7 +797,7 @@ async function bootstrapFirstAdmin() {
     createdAt: serverTimestamp()
   }, { merge:true });
   showToast('ตั้งค่าบัญชีแรกเป็น admin แล้ว', 'success');
-  state.currentProfile = { uid: state.currentUser.uid, role: 'admin', displayName: currentUserLabel('Admin'), employeeId: currentEmployeeId(), active:true };
+  state.currentProfile = { uid: state.currentUser.uid, role: 'admin', displayName: state.currentUser.email || 'Admin', active:true };
   startPageForUser();
 }
 function showMissingProfile(containerId, messageExtra='') {
@@ -841,7 +809,6 @@ function showMissingProfile(containerId, messageExtra='') {
       <h2>บัญชีนี้ยังไม่มีสิทธิ์ใช้งาน</h2>
       <p>ล็อกอินสำเร็จแล้ว แต่ยังไม่มีข้อมูลใน collection <code>users</code></p>
       <div class="notice" style="margin-top:12px">
-        Employee ID: ${escapeHtml(currentEmployeeId() || '-') }<br>
         Email: ${escapeHtml(state.currentUser?.email || '-') }<br>
         UID: ${escapeHtml(state.currentUser?.uid || '-') }<br>
         ${messageExtra}
@@ -853,53 +820,22 @@ function renderLoginModal(modalId, title='Login') {
   const modal = qs(modalId);
   if (!modal) return;
   modal.innerHTML = `
-    <div class="modal-card small auth-modal-card">
+    <div class="modal-card small">
       <h2>${escapeHtml(title)}</h2>
-      <p>เข้าสู่ระบบหรือสมัครสมาชิกด้วย <strong>รหัสพนักงาน</strong> โดยระบบจะสร้าง Email ภายใน Firebase ให้อัตโนมัติ</p>
-      <div class="auth-tabs">
-        <button class="chip active" type="button" data-auth-tab="login">Login</button>
-        <button class="chip" type="button" data-auth-tab="register">Register</button>
+      <p>ใช้ Firebase Authentication แบบ Email / Password</p>
+      <div class="form-grid" style="grid-template-columns:1fr">
+        <label><span>Email</span><input id="${modalId}_email" type="text" placeholder="staff@yourhotel.com"></label>
+        <label><span>Password</span><input id="${modalId}_password" type="password" placeholder="••••••••"></label>
       </div>
-
-      <div class="auth-pane" data-auth-pane="login">
-        <div class="form-grid" style="grid-template-columns:1fr">
-          <label><span>Employee ID หรือ Email</span><input id="${modalId}_login_identifier" type="text" placeholder="1001"></label>
-          <label><span>Password</span><input id="${modalId}_login_password" type="password" placeholder="••••••••"></label>
-        </div>
-        <div class="form-actions">
-          <button class="btn primary" id="${modalId}_loginBtn">Login</button>
-        </div>
-      </div>
-
-      <div class="auth-pane hidden" data-auth-pane="register">
-        <div class="form-grid" style="grid-template-columns:1fr">
-          <label><span>Employee ID</span><input id="${modalId}_register_employeeId" type="text" placeholder="1001"></label>
-          <label><span>Display Name</span><input id="${modalId}_register_displayName" type="text" placeholder="Noi"></label>
-          <label><span>Password</span><input id="${modalId}_register_password" type="password" placeholder="อย่างน้อย 6 ตัวอักษร"></label>
-          <label><span>Confirm Password</span><input id="${modalId}_register_confirmPassword" type="password" placeholder="ยืนยันรหัสผ่าน"></label>
-        </div>
-        <div class="notice" style="margin-top:10px">Email สำหรับ Firebase จะถูกสร้างอัตโนมัติในรูปแบบ <code>employeeid@${EMPLOYEE_EMAIL_DOMAIN}</code></div>
-        <div class="form-actions">
-          <button class="btn primary" id="${modalId}_registerBtn">Create Account</button>
-        </div>
+      <div class="form-actions">
+        <button class="btn primary" id="${modalId}_login">Login</button>
       </div>
     </div>
   `;
   modal.classList.remove('hidden');
-
-  modal.querySelectorAll('[data-auth-tab]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const selected = btn.dataset.authTab;
-      modal.querySelectorAll('[data-auth-tab]').forEach(tab => tab.classList.toggle('active', tab.dataset.authTab === selected));
-      modal.querySelectorAll('[data-auth-pane]').forEach(pane => pane.classList.toggle('hidden', pane.dataset.authPane !== selected));
-    });
-  });
-
-  qs(`${modalId}_loginBtn`).onclick = async () => {
-    const identifier = qs(`${modalId}_login_identifier`).value.trim();
-    const password = qs(`${modalId}_login_password`).value;
-    const email = credentialToEmail(identifier);
-    if (!identifier || !password) return showToast('กรุณาใส่รหัสพนักงานและรหัสผ่าน', 'danger');
+  qs(`${modalId}_login`).onclick = async () => {
+    const email = qs(`${modalId}_email`).value.trim();
+    const password = qs(`${modalId}_password`).value;
     try {
       await signInWithEmailAndPassword(auth, email, password);
       modal.classList.add('hidden');
@@ -907,44 +843,6 @@ function renderLoginModal(modalId, title='Login') {
     } catch (err) {
       console.error(err);
       showToast('Login ไม่สำเร็จ', 'danger');
-    }
-  };
-
-  qs(`${modalId}_registerBtn`).onclick = async () => {
-    const employeeId = normalizeEmployeeId(qs(`${modalId}_register_employeeId`).value);
-    const displayName = qs(`${modalId}_register_displayName`).value.trim();
-    const password = qs(`${modalId}_register_password`).value;
-    const confirmPassword = qs(`${modalId}_register_confirmPassword`).value;
-    const email = employeeIdToEmail(employeeId);
-    if (!employeeId) return showToast('กรุณาใส่รหัสพนักงาน', 'danger');
-    if (password.length < 6) return showToast('รหัสผ่านต้องอย่างน้อย 6 ตัวอักษร', 'danger');
-    if (password !== confirmPassword) return showToast('ยืนยันรหัสผ่านไม่ตรงกัน', 'danger');
-    try {
-      const cred = await createUserWithEmailAndPassword(auth, email, password);
-      const profile = {
-        uid: cred.user.uid,
-        email,
-        employeeId,
-        displayName: displayName || employeeId,
-        role: 'staff',
-        active: true,
-        signupMethod: 'employee_id',
-        updatedAt: serverTimestamp(),
-        createdAt: serverTimestamp()
-      };
-      await setDoc(doc(db, 'users', cred.user.uid), profile, { merge: true });
-      state.currentUser = cred.user;
-      state.currentProfile = { ...profile, updatedAt: new Date().toISOString(), createdAt: new Date().toISOString() };
-      showToast('สมัครสมาชิกสำเร็จ', 'success');
-      modal.classList.add('hidden');
-      modal.innerHTML = '';
-      await startPageForUser();
-    } catch (err) {
-      console.error(err);
-      const message = err?.code === 'auth/email-already-in-use'
-        ? 'รหัสพนักงานนี้ถูกใช้สมัครแล้ว'
-        : 'สมัครสมาชิกไม่สำเร็จ';
-      showToast(message, 'danger');
     }
   };
 }
@@ -957,7 +855,7 @@ async function startPageForUser() {
       showMissingProfile('staffApp', 'ให้ admin เพิ่ม role เป็น staff / manager / admin');
       return;
     }
-    qs('staffUserPill').textContent = currentUserLabel('Staff');
+    qs('staffUserPill').textContent = state.currentProfile.displayName || state.currentUser.email || 'Staff';
     qs('staffApp').classList.remove('hidden');
     renderStaff();
     return;
@@ -986,31 +884,29 @@ async function startPageForUser() {
 
   if (PAGE === 'admin') {
     const appContainer = qs('adminApp');
-    const settingsSnap = await getDoc(doc(db, 'app_settings', 'main'));
-    const bootDone = settingsSnap.exists() && settingsSnap.data().bootstrapComplete === true;
-
-    if (!bootDone) {
-      appContainer.classList.remove('hidden');
-      appContainer.innerHTML = `
-        <div class="card soft">
-          <h2>Bootstrap First Admin</h2>
-          <p>ยังไม่มี admin ในระบบ กดปุ่มด้านล่างเพื่อให้บัญชีที่ล็อกอินอยู่นี้เป็น admin คนแรก</p>
-          <div class="notice" style="margin-top:12px">
-            Employee ID: ${escapeHtml(currentEmployeeId() || '-')}<br>
-            Email: ${escapeHtml(state.currentUser.email || '-')}<br>
-            UID: ${escapeHtml(state.currentUser.uid || '-')}
-          </div>
-          <div class="form-actions" style="justify-content:flex-start">
-            <button class="btn primary" id="bootstrapAdminBtn">Make This Account Admin</button>
-          </div>
-        </div>
-      `;
-      qs('bootstrapAdminBtn').onclick = bootstrapFirstAdmin;
-      return;
-    }
-
     if (!state.currentProfile) {
-      showMissingProfile('adminApp', 'ให้ admin เพิ่ม user profile สำหรับ UID นี้ หรือสมัครผ่านรหัสพนักงานก่อน');
+      // allow bootstrap if settings missing or bootstrap not completed
+      const settingsSnap = await getDoc(doc(db, 'app_settings', 'main'));
+      const bootDone = settingsSnap.exists() && settingsSnap.data().bootstrapComplete === true;
+      if (!bootDone) {
+        appContainer.classList.remove('hidden');
+        appContainer.innerHTML = `
+          <div class="card soft">
+            <h2>Bootstrap First Admin</h2>
+            <p>ยังไม่มี admin ในระบบ กดปุ่มด้านล่างเพื่อให้บัญชีที่ล็อกอินอยู่นี้เป็น admin คนแรก</p>
+            <div class="notice" style="margin-top:12px">
+              Email: ${escapeHtml(state.currentUser.email || '-')}<br>
+              UID: ${escapeHtml(state.currentUser.uid || '-')}
+            </div>
+            <div class="form-actions" style="justify-content:flex-start">
+              <button class="btn primary" id="bootstrapAdminBtn">Make This Account Admin</button>
+            </div>
+          </div>
+        `;
+        qs('bootstrapAdminBtn').onclick = bootstrapFirstAdmin;
+        return;
+      }
+      showMissingProfile('adminApp', 'ถ้าเป็น admin ให้สร้าง user profile สำหรับ UID นี้ใน Firestore ก่อน');
       return;
     }
     if (!['admin','manager'].includes(state.currentProfile.role) || state.currentProfile.active === false) {
