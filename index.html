@@ -1,38 +1,88 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="th">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>The Taste Digital Menu Suite — Firebase</title>
-  <link rel="stylesheet" href="assets/styles.css" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LAYA Resort Hotel Portal</title>
+  <meta name="description" content="Main portal for all hotel departments" />
+  <link rel="stylesheet" href="styles.css" />
 </head>
-<body data-page="home">
-  <div class="shell home-shell">
+<body>
+  <div class="site-shell">
     <header class="hero">
-      
-      <h1>THE TASTE<br><span>Digital Menu Suite</span></h1>
-      <p>เมนูออนไลน์ 3 ภาษา พร้อมหน้าพนักงาน บอร์ดออเดอร์ และหน้าแอดมิน</p>
-      <div class="hero-actions" id="homeHeroActions">
-        <a class="btn primary" href="guest.html">เปิดเมนูลูกค้า</a>
-        <a class="btn" href="staff.html">Staff Order</a>
-      </div>
-      <p class="hero-note" id="homeAccessNote"></p>
+      <div class="hero-badge">LAYA RESORT HOTEL</div>
+      <h1>Hotel Main Portal</h1>
+      <p class="hero-text">
+        ศูนย์รวมลิงก์และระบบหลักของโรงแรม แยกตามแผนกอย่างชัดเจน เพื่อให้พนักงานเข้าใช้งานได้ง่ายจากหน้าเดียว
+      </p>
     </header>
 
-    <section class="portal-grid" id="homePortalGrid">
-      <a class="portal-card" href="guest.html">
-        <h2>Guest Menu</h2>
-        <p>ลูกค้าดูเมนู เปลี่ยนภาษา EN / 中文 / Русский ได้เอง</p>
-        <span>Open</span>
-      </a>
-      <a class="portal-card" href="staff.html">
-        <h2>Staff Order</h2>
-        <p>พนักงานล็อกอินด้วยรหัสพนักงาน แล้วเลือกเมนูส่ง order ขึ้นบอร์ด</p>
-        <span>Open</span>
-      </a>
-    </section>
-  </div>
+    <main>
+      <section class="section-block">
+        <div class="section-head">
+          <h2>เลือกแผนก</h2>
+          <p>เริ่มจากแผนก F&amp;B ก่อน และสามารถเพิ่มหน้าแผนกอื่นต่อได้ภายหลัง</p>
+        </div>
 
-  <script type="module" src="assets/app-firebase.js"></script>
+        <div class="department-grid">
+          <a class="department-card active" href="./fb/index.html">
+            <span class="department-tag">OPEN</span>
+            <h3>F&amp;B</h3>
+            <p>Food &amp; Beverage Portal</p>
+            <span class="department-link">เข้าสู่หน้าแผนก</span>
+          </a>
+
+          <div class="department-card disabled">
+            <span class="department-tag soon">SOON</span>
+            <h3>Front Office</h3>
+            <p>สำหรับระบบต้อนรับและงานหน้าฟรอนต์</p>
+            <span class="department-link">กำลังจัดเตรียม</span>
+          </div>
+
+          <div class="department-card disabled">
+            <span class="department-tag soon">SOON</span>
+            <h3>Housekeeping</h3>
+            <p>สำหรับระบบห้องพักและงานแม่บ้าน</p>
+            <span class="department-link">กำลังจัดเตรียม</span>
+          </div>
+
+          <div class="department-card disabled">
+            <span class="department-tag soon">SOON</span>
+            <h3>Engineering</h3>
+            <p>สำหรับระบบช่างและซ่อมบำรุง</p>
+            <span class="department-link">กำลังจัดเตรียม</span>
+          </div>
+
+          <div class="department-card disabled">
+            <span class="department-tag soon">SOON</span>
+            <h3>Reservation</h3>
+            <p>สำหรับงานสำรองห้องพักและติดตามการจอง</p>
+            <span class="department-link">กำลังจัดเตรียม</span>
+          </div>
+
+          <div class="department-card disabled">
+            <span class="department-tag soon">SOON</span>
+            <h3>Sales &amp; Marketing</h3>
+            <p>สำหรับลิงก์งานขาย โปรโมชัน และแคมเปญ</p>
+            <span class="department-link">กำลังจัดเตรียม</span>
+          </div>
+
+          <div class="department-card disabled">
+            <span class="department-tag soon">SOON</span>
+            <h3>Recreation</h3>
+            <p>สำหรับกิจกรรมแขกและงาน recreation</p>
+            <span class="department-link">กำลังจัดเตรียม</span>
+          </div>
+
+          <div class="department-card disabled">
+            <span class="department-tag soon">SOON</span>
+            <h3>Admin / Management</h3>
+            <p>สำหรับลิงก์ระบบจัดการและรายงานต่าง ๆ</p>
+            <span class="department-link">กำลังจัดเตรียม</span>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
 </body>
 </html>
