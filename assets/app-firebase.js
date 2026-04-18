@@ -1,6 +1,7 @@
 
 import { firebaseConfig, isFirebaseConfigured } from './firebase-config.js';
 import { seedCategories, seedItems } from './seed-data.js';
+import { mangroveCategories, mangroveItems } from './mangrove-seed-data.js';
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
 import {
   getAuth,
@@ -32,8 +33,13 @@ const LANGS = [
   { code: 'zh', label: '中文' },
   { code: 'ru', label: 'Русский' }
 ];
+const OUTLETS = [
+  { id: 'the-taste', label: 'The Taste', shortLabel: 'TST', kicker: 'THE TASTE' },
+  { id: 'mangrove', label: 'Mangrove', shortLabel: 'MNG', kicker: 'MANGROVE' }
+];
 const state = {
   lang: localStorage.getItem('taste_lang') || 'en',
+  outlet: localStorage.getItem('taste_outlet') || 'the-taste',
   category: 'all',
   search: '',
   categories: [],
@@ -180,6 +186,72 @@ function slugify(input='') {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '') || `item-${Date.now()}`;
 }
+function getOutletMeta(outletId = state.outlet) {
+  return OUTLETS.find(outlet => outlet.id === outletId) || OUTLETS[0];
+}
+function normalizeCategory(category = {}) {
+  return { ...category, outletId: category.outletId || 'the-taste' };
+}
+function normalizeItem(item = {}) {
+  return { ...item, outletId: item.outletId || 'the-taste' };
+}
+function buildSeedCatalog() {
+  return {
+    categories: [
+      ...seedCategories.filter(cat => cat.id !== 'all').map(normalizeCategory),
+      ...mangroveCategories.map(normalizeCategory)
+    ],
+    items: [
+      ...seedItems.map(normalizeItem),
+      ...mangroveItems.map(normalizeItem)
+    ]
+  };
+}
+function mergeSeedWithFirestore(categories = [], items = []) {
+  const seed = buildSeedCatalog();
+  const categoryMap = new Map(seed.categories.map(category => [category.id, normalizeCategory(category)]));
+  categories.map(normalizeCategory).forEach(category => {
+    categoryMap.set(category.id, { ...(categoryMap.get(category.id) || {}), ...category });
+  });
+  const itemMap = new Map(seed.items.map(item => [item.id, normalizeItem(item)]));
+  items.map(normalizeItem).forEach(item => {
+    itemMap.set(item.id, { ...(itemMap.get(item.id) || {}), ...item });
+  });
+  return {
+    categories: [...categoryMap.values()],
+    items: [...itemMap.values()]
+  };
+}
+function outletCategories(outletId = state.outlet) {
+  return sortCategories(state.categories.filter(category => (category.outletId || 'the-taste') === outletId));
+}
+function renderOutletSwitch(el) {
+  if (!el) return;
+  el.innerHTML = OUTLETS.map(outlet => `
+    <button class="chip ${outlet.id === state.outlet ? 'active' : ''}" data-outlet="${outlet.id}">${outlet.label}</button>
+  `).join('');
+  el.querySelectorAll('[data-outlet]').forEach(btn => btn.addEventListener('click', () => setOutlet(btn.dataset.outlet)));
+}
+function setOutlet(outletId) {
+  if (!OUTLETS.some(outlet => outlet.id === outletId)) return;
+  if (state.outlet === outletId) return;
+  state.outlet = outletId;
+  state.category = 'all';
+  state.search = '';
+  state.cart = [];
+  localStorage.setItem('taste_outlet', outletId);
+  renderPage();
+}
+function syncOutletLabels() {
+  const outlet = getOutletMeta();
+  if (qs('guestOutletBrand')) qs('guestOutletBrand').textContent = outlet.kicker;
+  if (qs('staffOutletBrand')) qs('staffOutletBrand').textContent = outlet.kicker;
+  if (qs('guestPageTitle')) qs('guestPageTitle').textContent = `${outlet.label} Menu`;
+  if (qs('staffOutletHeading')) qs('staffOutletHeading').textContent = `${outlet.label} Staff Ordering`;
+}
+function categoryOptionsMarkup(outletId, selectedCategoryId) {
+  return outletCategories(outletId).map(cat => `<option value="${cat.id}" ${cat.id === selectedCategoryId ? 'selected' : ''}>${escapeHtml(cat.name_en)}</option>`).join('');
+}
 function showToast(message, variant='normal') {
   let el = document.querySelector('.global-toast');
   if (!el) {
@@ -230,13 +302,13 @@ function formatDateTime(value) {
   const date = value?.toDate ? value.toDate() : new Date(value);
   return date.toLocaleString('en-GB', { hour12: false });
 }
-function orderNo() {
+function orderNo(outletId = state.outlet) {
   const now = new Date();
   const y = now.getFullYear();
   const m = String(now.getMonth()+1).padStart(2,'0');
   const d = String(now.getDate()).padStart(2,'0');
   const rand = String(Math.floor(Math.random()*9000)+1000);
-  return `ORD-${y}${m}${d}-${rand}`;
+  return `${getOutletMeta(outletId).shortLabel}-${y}${m}${d}-${rand}`;
 }
 function calcSubtotal(items) {
   return items.reduce((sum, item) => sum + (Number(item.price)||0) * (Number(item.qty)||0), 0);
@@ -260,10 +332,11 @@ function renderLangSwitch(el) {
   el.querySelectorAll('[data-lang]').forEach(btn => btn.addEventListener('click', () => setLang(btn.dataset.lang)));
 }
 function mergedCategories() {
-  return [{ id:'all', name_en:'All', name_zh:'全部', name_ru:'Все', sortOrder:0 }, ...sortCategories(state.categories)];
+  return [{ id:'all', name_en:'All', name_zh:'全部', name_ru:'Все', sortOrder:0 }, ...outletCategories(state.outlet)];
 }
 function filteredItems() {
-  return sortItems(state.items, state.categories).filter(item => {
+  const outletItems = state.items.filter(item => (item.outletId || 'the-taste') === state.outlet);
+  return sortItems(outletItems, outletCategories(state.outlet)).filter(item => {
     const activeOk = item.isActive !== false && item.hidden !== true;
     const categoryOk = state.category === 'all' || item.categoryId === state.category;
     const search = state.search.trim().toLowerCase();
@@ -407,7 +480,9 @@ function openNoteModal(itemId) {
   });
 }
 function renderGuest() {
+  renderOutletSwitch(qs('guestOutletSwitch'));
   renderLangSwitch(qs('guestLanguageSwitch'));
+  syncOutletLabels();
   renderCategoryTabs(qs('guestCategoryTabs'));
   const search = qs('guestSearch');
   if (search) {
@@ -436,6 +511,7 @@ function renderCart() {
   const guests = qs('guestCount')?.value || '1';
   const payment = qs('paymentType')?.value || 'cash';
   meta.innerHTML = `
+    <div class="meta-row"><span>Outlet</span><strong>${escapeHtml(getOutletMeta().label)}</strong></div>
     <div class="meta-row"><span>Seat</span><strong>${escapeHtml(seat)}</strong></div>
     <div class="meta-row"><span>Room</span><strong>${escapeHtml(room || '-')}</strong></div>
     <div class="meta-row"><span>Guests</span><strong>${escapeHtml(guests)}</strong></div>
@@ -459,7 +535,9 @@ function renderCart() {
   subtotalEl.textContent = formatCurrency(calcSubtotal(state.cart));
 }
 function renderStaff() {
+  renderOutletSwitch(qs('staffOutletSwitch'));
   renderLangSwitch(qs('staffLanguageSwitch'));
+  syncOutletLabels();
   renderCategoryTabs(qs('staffCategoryTabs'));
   const search = qs('staffSearch');
   if (search) {
@@ -490,9 +568,10 @@ async function sendOrderToBoard() {
   if (!seatNo) return showToast('กรุณาใส่ Table / Seat', 'danger');
   if (!state.cart.length) return showToast('กรุณาเลือกเมนูอย่างน้อย 1 รายการ', 'danger');
   const payload = {
-    orderNo: orderNo(),
+    orderNo: orderNo(state.outlet),
     status: 'sent',
-    outletId: 'the-taste',
+    outletId: state.outlet,
+    outletName: getOutletMeta().label,
     seatNo,
     tableNo: seatNo,
     roomNo,
@@ -655,6 +734,7 @@ function renderBoardCard(order) {
         ${order.status === 'sent' ? '<span class="badge-new">NEW</span>' : ''}
       </div>
       <div class="meta">
+        Outlet: ${escapeHtml(order.outletName || getOutletMeta(order.outletId).label)}<br>
         ${formatDateTime(order.createdAt)}<br>
         Seat: ${escapeHtml(order.seatNo || '-')} · Room: ${escapeHtml(order.roomNo || '-')} · Guests: ${escapeHtml(order.guestCount || 1)}<br>
         Payment: ${escapeHtml(order.paymentType || '-')} · Staff: ${escapeHtml(order.createdByName || '-')}
@@ -665,7 +745,10 @@ function renderBoardCard(order) {
   `;
 }
 function renderBoard() {
-  qs('boardStats').textContent = `New: ${state.boardOrders.filter(o=>o.status==='sent').length}`;
+  const newOrdersCount = state.boardOrders.filter(o=>o.status==='sent').length;
+  const theTasteCount = state.boardOrders.filter(o => o.status === 'sent' && (o.outletId || 'the-taste') === 'the-taste').length;
+  const mangroveCount = state.boardOrders.filter(o => o.status === 'sent' && (o.outletId || 'the-taste') === 'mangrove').length;
+  qs('boardStats').textContent = `New: ${newOrdersCount} · The Taste: ${theTasteCount} · Mangrove: ${mangroveCount}`;
   const newOrders = state.boardOrders.filter(o => o.status === 'sent');
   const ackOrders = state.boardOrders.filter(o => o.status === 'acknowledged');
   const doneOrders = state.boardOrders.filter(o => ['keyed', 'closed'].includes(o.status));
@@ -711,6 +794,7 @@ function openOrderView(orderId) {
       <h2>${escapeHtml(order.orderNo)}</h2>
       <p>${formatDateTime(order.createdAt)}</p>
       <div class="notice" style="margin-top:14px">
+        Outlet: ${escapeHtml(order.outletName || getOutletMeta(order.outletId).label)}<br>
         Seat: ${escapeHtml(order.seatNo || '-')} · Room: ${escapeHtml(order.roomNo || '-')} · Guests: ${escapeHtml(order.guestCount || 1)}<br>
         Payment: ${escapeHtml(order.paymentType || '-')} · Staff: ${escapeHtml(order.createdByName || '-')}
       </div>
@@ -735,6 +819,7 @@ function adminMenuRow(item) {
           <h3>${escapeHtml(item.name_en || item.id)}</h3>
           <p>${escapeHtml(item.name_zh || '')}<br>${escapeHtml(item.name_ru || '')}</p>
           <div class="status-row">
+            <span class="pill">${escapeHtml(getOutletMeta(item.outletId || 'the-taste').label)}</span>
             <span class="pill ${item.isActive !== false ? 'active' : ''}">${item.isActive !== false ? 'Active' : 'Inactive'}</span>
             <span class="pill ${item.hidden ? 'hidden' : ''}">${item.hidden ? 'Hidden' : 'Visible'}</span>
             <span class="pill ${item.soldOut ? 'soldout' : ''}">${item.soldOut ? 'Sold Out' : 'Available'}</span>
@@ -772,23 +857,44 @@ function userRow(user) {
 }
 function renderAdmin() {
   const search = (qs('adminSearch')?.value || '').trim().toLowerCase();
+  const outlet = qs('adminOutletFilter')?.value || 'all';
   const category = qs('adminCategoryFilter')?.value || 'all';
   const status = qs('adminStatusFilter')?.value || 'all';
+
+  const outletSelect = qs('adminOutletFilter');
+  if (outletSelect && !outletSelect.dataset.bound) {
+    outletSelect.innerHTML = `<option value="all">All Outlets</option>` + OUTLETS.map(outletOption => `<option value="${outletOption.id}">${outletOption.label}</option>`).join('');
+    outletSelect.dataset.bound = '1';
+    outletSelect.addEventListener('change', () => {
+      if (qs('adminCategoryFilter')) qs('adminCategoryFilter').value = 'all';
+      renderAdmin();
+    });
+  }
+
+  const categoriesForFilter = outlet === 'all' ? sortCategories(state.categories) : outletCategories(outlet);
+  const categorySelect = qs('adminCategoryFilter');
+  if (categorySelect) {
+    const currentCategoryValue = categorySelect.value || 'all';
+    categorySelect.innerHTML = `<option value="all">All Categories</option>` + categoriesForFilter.map(cat => `<option value="${cat.id}">${escapeHtml(cat.name_en)}</option>`).join('');
+    categorySelect.value = categoriesForFilter.some(cat => cat.id === currentCategoryValue) ? currentCategoryValue : 'all';
+    if (!categorySelect.dataset.bound) {
+      categorySelect.dataset.bound = '1';
+      categorySelect.addEventListener('change', renderAdmin);
+    }
+  }
+
   const list = state.items.filter(item => {
+    const itemOutlet = item.outletId || 'the-taste';
+    const matchOutlet = outlet === 'all' || itemOutlet === outlet;
     const matchSearch = !search || [item.name_en, item.name_zh, item.name_ru, item.id].join(' ').toLowerCase().includes(search);
-    const matchCategory = category === 'all' || item.categoryId === category;
+    const matchCategory = (categorySelect?.value || 'all') === 'all' || item.categoryId === (categorySelect?.value || 'all');
     const matchStatus = status === 'all'
       || (status === 'active' && item.isActive !== false && item.hidden !== true && item.soldOut !== true)
       || (status === 'hidden' && item.hidden === true)
       || (status === 'soldout' && item.soldOut === true);
-    return matchSearch && matchCategory && matchStatus;
+    return matchOutlet && matchSearch && matchCategory && matchStatus;
   });
-  const select = qs('adminCategoryFilter');
-  if (select && !select.dataset.bound) {
-    select.innerHTML = `<option value="all">All Categories</option>` + sortCategories(state.categories).map(cat => `<option value="${cat.id}">${escapeHtml(cat.name_en)}</option>`).join('');
-    select.dataset.bound = '1';
-    select.addEventListener('change', renderAdmin);
-  }
+
   qs('adminList').innerHTML = list.length ? list.map(adminMenuRow).join('') : '<div class="empty-state">No menu items</div>';
   qs('userList').innerHTML = state.userDrafts.length ? state.userDrafts.map(userRow).join('') : '<div class="empty-state">No user profiles</div>';
   document.querySelectorAll('[data-edit-item]').forEach(btn => btn.addEventListener('click', () => openMenuEditor(btn.dataset.editItem)));
@@ -797,9 +903,13 @@ function renderAdmin() {
 function openMenuEditor(itemId) {
   const modal = qs('adminEditorModal');
   const existing = state.items.find(x => x.id === itemId);
+  const defaultOutlet = existing?.outletId || qs('adminOutletFilter')?.value || state.outlet || 'the-taste';
+  const normalizedDefaultOutlet = defaultOutlet === 'all' ? 'the-taste' : defaultOutlet;
+  const defaultCategoryId = outletCategories(normalizedDefaultOutlet)[0]?.id || 'appetizer';
   const item = existing || {
     id: '',
-    categoryId: sortCategories(state.categories)[0]?.id || 'appetizer',
+    outletId: normalizedDefaultOutlet,
+    categoryId: defaultCategoryId,
     price: 0,
     imageUrl: '',
     isActive: true,
@@ -817,15 +927,18 @@ function openMenuEditor(itemId) {
       <div class="admin-head"><h2>${existing ? 'Edit Menu Item' : 'Add Menu Item'}</h2></div>
       <div class="form-grid">
         <label><span>Item ID</span><input id="editItemId" type="text" value="${escapeHtml(item.id)}" ${existing ? 'disabled' : ''}></label>
+        <label><span>Outlet</span>
+          <select id="editOutletId" ${existing ? 'disabled' : ''}>${OUTLETS.map(outletOption => `<option value="${outletOption.id}" ${outletOption.id === (item.outletId || 'the-taste') ? 'selected' : ''}>${outletOption.label}</option>`).join('')}</select>
+        </label>
         <label><span>Category</span>
-          <select id="editCategoryId">${sortCategories(state.categories).map(cat => `<option value="${cat.id}" ${cat.id===item.categoryId?'selected':''}>${escapeHtml(cat.name_en)}</option>`).join('')}</select>
+          <select id="editCategoryId">${categoryOptionsMarkup(item.outletId || 'the-taste', item.categoryId)}</select>
         </label>
         <label><span>Price</span><input id="editPrice" type="number" min="0" value="${escapeHtml(item.price)}"></label>
-        <label><span>Image URL</span><input id="editImageUrl" type="text" value="${escapeHtml(item.imageUrl || '')}" placeholder="assets/menu/item.png or https://..."></label>
+        <label class="full"><span>Image URL</span><input id="editImageUrl" type="text" value="${escapeHtml(item.imageUrl || '')}" placeholder="assets/menu/item.png or https://..."></label>
         <label class="full"><span>English Name</span><input id="editNameEn" type="text" value="${escapeHtml(item.name_en || '')}"></label>
         <label class="full"><span>English Description</span><textarea id="editDescEn" rows="3">${escapeHtml(item.desc_en || '')}</textarea></label>
-        <label class="full"><span>Chinese Name</span><input id="editNameZh" type="text" value="${escapeHtml(item.name_zh || '')}"></label>
-        <label class="full"><span>Chinese Description</span><textarea id="editDescZh" rows="3">${escapeHtml(item.desc_zh || '')}</textarea></label>
+        <label class="full"><span>Chinese / Thai Name</span><input id="editNameZh" type="text" value="${escapeHtml(item.name_zh || '')}"></label>
+        <label class="full"><span>Chinese / Thai Description</span><textarea id="editDescZh" rows="3">${escapeHtml(item.desc_zh || '')}</textarea></label>
         <label class="full"><span>Russian Name</span><input id="editNameRu" type="text" value="${escapeHtml(item.name_ru || '')}"></label>
         <label class="full"><span>Russian Description</span><textarea id="editDescRu" rows="3">${escapeHtml(item.desc_ru || '')}</textarea></label>
       </div>
@@ -842,11 +955,20 @@ function openMenuEditor(itemId) {
   `;
   modal.classList.remove('hidden');
   modal.querySelector('[data-close-modal]').addEventListener('click', closeModals);
+  const editOutletSelect = qs('editOutletId');
+  const editCategorySelect = qs('editCategoryId');
+  if (editOutletSelect && editCategorySelect && !existing) {
+    editOutletSelect.addEventListener('change', () => {
+      editCategorySelect.innerHTML = categoryOptionsMarkup(editOutletSelect.value, outletCategories(editOutletSelect.value)[0]?.id || '');
+    });
+  }
   qs('saveMenuItemBtn').onclick = async () => {
+    const outletId = (existing?.outletId || qs('editOutletId').value || 'the-taste');
     const id = existing ? existing.id : slugify(qs('editItemId').value || qs('editNameEn').value);
     if (!id) return showToast('กรุณาใส่ Item ID', 'danger');
     const payload = {
       id,
+      outletId,
       categoryId: qs('editCategoryId').value,
       price: Number(qs('editPrice').value || 0),
       imageUrl: qs('editImageUrl').value.trim() || `assets/menu/${id}.png`,
@@ -933,8 +1055,9 @@ function wireCommonAuthButtons() {
   });
 }
 function useSeedMenuFallback(reason='') {
-  state.categories = seedCategories.filter(cat => cat.id !== 'all').map(cat => ({ ...cat }));
-  state.items = seedItems.map(item => ({ ...item }));
+  const seed = buildSeedCatalog();
+  state.categories = seed.categories.map(category => ({ ...category }));
+  state.items = seed.items.map(item => ({ ...item }));
   state.menuSource = 'seed';
   state.menuNotice = reason || 'Using built-in fallback menu because Firestore menu data is missing.';
 }
@@ -950,8 +1073,9 @@ async function fetchMenu() {
       useSeedMenuFallback('Firestore ยังไม่มีข้อมูลเมนู ระบบจะแสดงเมนูสำรองชั่วคราว');
       return;
     }
-    state.categories = categories;
-    state.items = items;
+    const merged = mergeSeedWithFirestore(categories, items);
+    state.categories = merged.categories;
+    state.items = merged.items;
     state.menuSource = 'firestore';
     state.menuNotice = '';
   } catch (err) {
@@ -1180,17 +1304,18 @@ async function startPageForUser() {
   }
 }
 async function seedFirestoreMenu() {
-  if (!confirm('Seed เมนูชุดเริ่มต้นจากไฟล์เมนูเดิมลง Firestore ตอนนี้หรือไม่?')) return;
+  if (!confirm('Seed เมนูชุดเริ่มต้นของ The Taste และ Mangrove ลง Firestore ตอนนี้หรือไม่?')) return;
   try {
     const batch = writeBatch(db);
-    seedCategories.filter(cat => cat.id !== 'all').forEach(cat => {
+    const seed = buildSeedCatalog();
+    seed.categories.forEach(cat => {
       batch.set(doc(db, 'menu_categories', cat.id), {
         ...cat,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       }, { merge: true });
     });
-    seedItems.forEach(item => {
+    seed.items.forEach(item => {
       batch.set(doc(db, 'menu_items', item.id), {
         ...item,
         id: item.id,
@@ -1200,6 +1325,7 @@ async function seedFirestoreMenu() {
     });
     batch.set(doc(db, 'app_settings', 'main'), {
       outletName: 'The Taste',
+      outletNames: ['The Taste', 'Mangrove'],
       bootstrapComplete: true,
       boardSoundEnabled: true,
       enabledLanguages: ['en','zh','ru'],
@@ -1210,7 +1336,7 @@ async function seedFirestoreMenu() {
     await batch.commit();
     await fetchMenu();
     renderPage();
-    showToast('Seed เมนูลง Firestore แล้ว', 'success');
+    showToast('Seed เมนู The Taste และ Mangrove ลง Firestore แล้ว', 'success');
   } catch (err) {
     console.error(err);
     showToast('Seed Firestore ไม่สำเร็จ', 'danger');
@@ -1240,15 +1366,15 @@ function renderHome() {
   if (!isLoggedIn) {
     addAction('เปิดเมนูลูกค้า', 'guest.html', true);
     addAction('Staff Order', 'staff.html');
-    addCard('Guest Menu', 'ลูกค้าดูเมนู เปลี่ยนภาษา EN / 中文 / Русский ได้เอง', 'guest.html');
-    addCard('Staff Order', 'พนักงานล็อกอินด้วยรหัสพนักงาน แล้วเลือกเมนูส่ง order ขึ้นบอร์ด', 'staff.html');
+    addCard('Guest Menu', 'ลูกค้าดูเมนูและสลับ outlet ระหว่าง The Taste กับ Mangrove ได้เอง', 'guest.html');
+    addCard('Staff Order', 'พนักงานล็อกอินด้วยรหัสพนักงาน แล้วเลือก outlet และเมนูส่ง order ขึ้นบอร์ด', 'staff.html');
     if (accessNote) accessNote.textContent = 'ผู้ใช้ใหม่ที่สมัครจากระบบจะเริ่มต้นเป็น role staff และหลังล็อกอินจะเห็นเฉพาะหน้า Staff Order';
   } else if (canAccessAdmin()) {
     addAction('เปิดเมนูลูกค้า', 'guest.html', true);
     addAction('Staff Order', 'staff.html');
     addAction('Order Board', 'board.html');
     addAction('Admin CMS', 'admin.html');
-    addCard('Guest Menu', 'ลูกค้าดูเมนู เปลี่ยนภาษา EN / 中文 / Русский ได้เอง', 'guest.html');
+    addCard('Guest Menu', 'ลูกค้าดูเมนูและสลับ outlet ระหว่าง The Taste กับ Mangrove ได้เอง', 'guest.html');
     addCard('Staff Order', 'พนักงานเลือกรายการอาหาร ใส่รายละเอียด และส่งขึ้นบอร์ด', 'staff.html');
     addCard('Order Board', 'Hostess / Cashier เห็น order แบบ real-time พร้อมเสียงแจ้งเตือน', 'board.html');
     addCard('Admin CMS', 'จัดการเมนู 3 ภาษา ราคา สถานะขาย และ role ของผู้ใช้', 'admin.html');
